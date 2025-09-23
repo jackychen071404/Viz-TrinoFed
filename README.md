@@ -163,6 +163,7 @@ To complement the processing of queries on Trino, a distributed SQL query engine
 ### 1. Data Collection Layer
 - Retrieve query plans and details in JSON format. This is done with Trino’s EXPLAIN (TYPE DISTRIBUTED, FORMAT JSON) SQL command or with coordinator endpoints.
 - Capture runtime metrics through Trino’s API and own built in metrics, EXPLAIN ANALYZE output, or directly from any workers on the system. Some metrics we will capture include execution time, errors, execution time and I/O information.  
+<<<<<<< HEAD
 - Use a broker such as Kafka to capture execution events and push them downstream to our visualization services and display them.
 
 ### 2. Processing and Aggregation Layer
@@ -259,6 +260,9 @@ To complement the processing of queries on Trino, a distributed SQL query engine
 Retrieve query plans and details in JSON format. This is done with Trino’s EXPLAIN (TYPE DISTRIBUTED, FORMAT JSON) SQL command or with coordinator endpoints.
 Capture runtime metrics through Trino’s API and own built in metrics, EXPLAIN ANALYZE output, or directly from any workers on the system. Some metrics we will capture include execution time, errors, execution time and I/O information. 
 Use a broker such as Kafka to capture execution events and push them downstream to our visualization services and display them.
+=======
+- Use a broker such as Kafka to capture execution events and push them downstream to our visualization services and display them..
+
 
 
  
