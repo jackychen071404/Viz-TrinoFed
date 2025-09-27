@@ -38,12 +38,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     networks:
       - trino-network
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./init-data/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
   # MongoDB database
   mongodb:
@@ -54,12 +53,11 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${POSTGRES_DB} # Reusing the DB name for simplicity
     ports:
-      - "27018:27017"
+      - "27017:27017"
     networks:
       - trino-network
     volumes:
       - mongo-data:/data/db
-      - ./init-data/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
 
   # Trino server
   trino:
@@ -70,13 +68,12 @@ services:
       - mongodb
       - kafka
     ports:
-      - "8081:8080"
+      - "8080:8080"
     volumes:
       - ./trino/etc/catalog:/etc/trino/catalog:ro
       - ./trino/etc/config.properties:/etc/trino/config.properties:ro
       - ./trino/etc/node.properties:/etc/trino/node.properties:ro
       - ./trino/etc/event-listener.properties:/etc/trino/event-listener.properties:ro
-      - ./trino/kafka:/etc/trino/kafka:ro
     env_file:
       - .env
     networks:
@@ -91,3 +88,4 @@ networks:
 volumes:
   postgres-data:
   mongo-data:
+
