@@ -43,6 +43,7 @@ services:
       - trino-network
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./init-data/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
   # MongoDB database
   mongodb:
@@ -58,6 +59,7 @@ services:
       - trino-network
     volumes:
       - mongo-data:/data/db
+      - ./init-data/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
 
   # Trino server
   trino:

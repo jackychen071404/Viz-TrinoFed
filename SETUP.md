@@ -10,6 +10,7 @@ This branch implements a **Spring Boot backend** that consumes Trino query event
 - [Architecture Overview](#architecture-overview)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Loading Sample Data](#loading-sample-data)
 - [Testing the System](#testing-the-system)
 - [API Endpoints](#api-endpoints)
 - [Troubleshooting](#troubleshooting)
