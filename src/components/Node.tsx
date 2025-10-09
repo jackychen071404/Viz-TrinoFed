@@ -16,12 +16,28 @@ each with a responding icon*/
 /*TODO: it should have a button to copy the node to the clipboard*/
 import  { memo, useRef, useCallback } from 'react';
 import { Edge, Position } from '@xyflow/react';
-import { CheckCircle, Error, Work, Done } from '@mui/icons-material';
+import { SentimentSatisfiedAlt, SentimentVeryDissatisfied, SentimentNeutral, Check, QuestionMark } from '@mui/icons-material';
 import { Box, Button, Tooltip, Typography } from '@mui/material';
 
-export type NodeProps = {
+  export interface NodeProps {
+  id: string;
+  fragmentId: string;
+  title?: string;
+  connector?: string;
+  operators?: string
+  cpuMs?: number;
+  wallMs?: number;
+  processedRows?: number;
+  processedBytes?: number;
+  splits?: {queued: number;
+    running: number;
+    completed: number;
+    failed: number;
+    total: number;
+  }
+  error?: string;
   state: {
-    status: 'unknown' | 'error' | 'working' | 'finished';
+    status: 'unknown' | 'error' | 'warning' | 'working' | 'finished';
     color: string;
     icon: string; 
     altText: string;
@@ -36,13 +52,81 @@ export type NodeProps = {
   isFocused: boolean;
 }
 
+
 /* TODO: implement methods: 
 createBoundingBox,
-validateEdges, 
+validateEdges
 copyToClipboard, 
 hydrateNode,
-updateNode
+updatePayload
+updateState
 */
+export const formatSize = (bytes: number) => {
+  if(!bytes && bytes !== 0) return '-';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let index = 0;
+  let size = bytes;
+  while(size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index++;
+  }
+  return `${size.toFixed(2)} ${units[index]}`;
+}
+
+export const formatTime = (ms: number) => {
+  if(!ms && ms !== 0) return '-';
+  const units = ['ms', 's', 'm', 'h', 'd'];
+  let index = 0;
+  let time = ms;
+  while(time >= 1000 && index < units.length - 1) {
+    time /= 1000;
+    index++;
+  }
+  return `${time.toFixed(2)} ${units[index]}`;
+}
+
+export const formatNumber = (num: number) =>
+{
+  if(!num && num !== 0) return '-';
+  return num.toLocaleString();
+}
+
+export const formatDate = (date: Date) => {
+  if(!date) return '-';
+  return date.toLocaleString();
+}
+
+export const setStatusColor = (state: NodeProps['state']) => {
+  switch(state.status) {
+    case 'unknown':
+      return 'blue';
+    case 'error':
+      return 'red';
+    case 'warning':
+      return 'yellow';
+    case 'working':
+      return 'green';
+    case 'finished':
+      return 'gray';
+  }
+}
+
+export const setStatusIcon = (state: NodeProps['state']) => {
+  switch(state.status) {
+    case 'unknown':
+      return <QuestionMark />;
+    case 'error':
+      return <SentimentVeryDissatisfied />;
+    case 'warning':
+      return <SentimentNeutral />;
+    case 'working':
+      return <SentimentSatisfiedAlt />;
+    case 'finished':
+      return <Check />;
+  }
+
+}
+
 
 export default memo(({ state, dateTimeInstantiated, dateTimeCompleted, payload, numberOfConnectors, edges, isExpanded, isFocused}: NodeProps) => {
   return (
@@ -61,6 +145,7 @@ export default memo(({ state, dateTimeInstantiated, dateTimeCompleted, payload, 
         {isExpanded}
         {isFocused}
       </div>
+      <Box sx={{width: '100%', height: '100%', backgroundColor: 'red'}}></Box>
     </>
   );
 });
