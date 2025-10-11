@@ -1,5 +1,4 @@
-// src/pages/TreePage.tsx
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   applyNodeChanges,
@@ -12,38 +11,62 @@ import {
   Edge,
   ProOptions,
   ReactFlowInstance,
+  Background,
+  Controls,
+  MiniMap,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { apiService } from '../services/api.service';
+import { transformQueryTreeToReactFlow } from '../utils/treeTransform';
+import { QueryTree } from '../types/api.types';
+import QueryNode from '../components/QueryNode';
+import QueryPlanPanel from '../components/QueryPlanPanel';
+import QueryMetricsPanel from '../components/QueryMetricsPanel';
 
 const proOptions: ProOptions = { hideAttribution: true };
 
-const initialNodes: Node[] = [
-    { id: 'n1', position: { x: 0, y: 0 }, data: { label: 'Node 1' } },
-    { id: 'n2', position: { x: 0, y: 100 }, data: { label: 'Node 2' } },
-    { id: 'n3', position: { x: 0, y: 200 }, data: { label: 'Node 3' } },
-    { id: 'n4', position: { x: 0, y: 300 }, data: { label: 'Node 4' } },
-    { id: 'n5', position: { x: 0, y: 400 }, data: { label: 'Node 5' } },
-    { id: 'n6', position: { x: -100, y: 500 }, data: { label: 'Node 6' } },
-    { id: 'n7', position: { x: 100, y: 600 }, data: { label: 'Node 7' } },
-    { id: 'n8', position: { x: 25, y: 700 }, data: { label: 'Node 8' } },
-    { id: 'n9', position: { x: 200, y: 800 }, data: { label: 'Node 9' } },
-    { id: 'n10', position: { x: -200, y: 900 }, data: { label: 'Node 10' } }
-  ];
-  
-  const initialEdges: Edge[] = [
-    { id: 'n1-n2', source: 'n1', target: 'n2' }, 
-    { id: 'n2-n3', source: 'n2', target: 'n3' },
-     {id : 'n4-n5', source: 'n4', target: 'n5'}, 
-     {id : 'n5-n6', source: 'n5', target: 'n6'}, 
-     {id: 'n5-n7', source: 'n5', target: 'n7'}, 
-     {id: 'n7-n8', source: 'n7', target: 'n8' }, 
-     {id: 'n7-n9', source: 'n7', target: 'n9'}, 
-     {id: 'n8-n10', source: 'n8', target: 'n10'}
-    ];
-
 const TreePage: React.FC = () => {
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentQuery, setCurrentQuery] = useState<QueryTree | null>(null);
+
+  const nodeTypes = useMemo(() => ({ queryNode: QueryNode }), []);
+
+  useEffect(() => {
+    const loadLatestQuery = async () => {
+      try {
+        const queries = await apiService.getAllQueries();
+        if (queries.length > 0) {
+          const latest = queries[queries.length - 1];
+          setCurrentQuery(latest);
+          
+          if (latest.root) {
+            // Pass events to help build a better visualization
+            const { nodes: newNodes, edges: newEdges } = transformQueryTreeToReactFlow(
+              latest.root, 
+              latest.events
+            );
+            setNodes(newNodes);
+            setEdges(newEdges);
+          } else {
+            setError('Query has no tree structure');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load queries:', err);
+        setError('Failed to connect to backend. Make sure backend is running on http://localhost:8080');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLatestQuery();
+
+    // Poll for updates every 2 seconds
+    const interval = setInterval(loadLatestQuery, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns)),
@@ -62,23 +85,58 @@ const TreePage: React.FC = () => {
 
   const onInit = useCallback(
     (reactFlowInstance: ReactFlowInstance) => {
-      reactFlowInstance.fitView({padding: 0.1});
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+      }, 100);
     },
     []
   );
 
+  if (loading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '18px' }}>Loading queries...</div>;
+  }
+
+  if (error) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'red', fontSize: '16px', padding: '20px', textAlign: 'center' }}>{error}</div>;
+  }
+
+  if (nodes.length === 0) {
+    return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '16px', textAlign: 'center', padding: '20px' }}>
+      <p>No queries found. Run a query in Trino to see visualization.</p>
+      <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>Try running: <code>./test-query.sh</code></p>
+    </div>;
+  }
+
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {currentQuery && (
+        <>
+          <QueryMetricsPanel query={currentQuery} />
+
+          <QueryPlanPanel 
+            events={currentQuery.events || []}
+            plan={currentQuery.events?.find(e => e.plan)?.plan}
+          />
+        </>
+      )}
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        fitView
         onInit={onInit}
+        fitView
         proOptions={proOptions}
-      />
+        minZoom={0.1}
+        maxZoom={2}
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
     </div>
   );
 };

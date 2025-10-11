@@ -102,3 +102,7 @@ Thumbs.db
 data/
 volumes/
 .idea/
+
+
+#frontend
+package-lock.json

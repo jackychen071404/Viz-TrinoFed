@@ -157,7 +157,3 @@ docker ps  # Check if Kafka container is running
 
 ### Lombok Not Working
 Make sure annotation processing is enabled in IntelliJ IDEA settings.
-
-## License
-
-MIT
