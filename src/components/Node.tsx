@@ -96,20 +96,22 @@
 //   return date.toLocaleString();
 // }
 
-// export const setStatusColor = (state: NodeProps['state']) => {
-//   switch(state.status) {
-//     case 'unknown':
-//       return 'blue';
-//     case 'error':
-//       return 'red';
-//     case 'warning':
-//       return 'yellow';
-//     case 'working':
-//       return 'green';
-//     case 'finished':
-//       return 'gray';
-//   }
-// }
+export const setStatusColor = (state: QueryNodeData['status']) => {
+  switch(state) {
+    case 'queued':
+      return '#ffffff';
+    case 'failed':
+      return '#c60101';
+    case 'idle':
+      return '#f0e806';
+    case 'ok':
+      return '#22c601';
+    case 'finished':
+      return '#0139c6';
+    case 'unknown':
+      return '#cdcdcd';
+  }
+}
 
 // export const setStatusIcon = (state: NodeProps['state']) => {
 //   switch(state.status) {
@@ -215,7 +217,7 @@ export interface QueryNodeData {
   stage: string; // e.g., "Execution", "Scan", "Aggregate"
   title?: string; // optional short title
   connector?: string; // e.g., "PostgreSQL", "MongoDB"
-  status?: "ok" | "running" | "failed" | "queued";
+  status?: "unknown" | "ok" | "idle" | "queued" | "finished" | "failed";
   durationMs?: number; // optional summary duration
   rows?: number; // optional summary rows
   timestamp?: string; // ISO string for when stage started
@@ -294,7 +296,7 @@ function StatusChip({ status }: { status?: QueryNodeData["status"] }) {
   if (!status) return null;
   const color =
     status === "ok" ? "success" :
-    status === "running" ? "info" :
+    status === "idle" ? "info" :
     status === "failed" ? "error" :
     "default";
   const label = status.charAt(0).toUpperCase() + status.slice(1);
@@ -472,7 +474,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
     <Box role="group" aria-label={`${n.stage} ${n.title ?? ''}`} tabIndex={0}
       sx={{
         width: 280, borderRadius: 2, border: 1, borderColor: 'divider',
-        bgcolor: 'background.paper', p: 1.25, boxShadow: 1,
+        bgcolor: setStatusColor(n.status), p: 1.25, boxShadow: 1,
         '&:focus-visible': { boxShadow: 3, borderColor: 'primary.main' },
       }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
