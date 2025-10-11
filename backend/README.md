@@ -13,7 +13,7 @@ Backend service for parsing and processing Trino query events from Kafka.
 
 ## Tech Stack
 
-- Java 17
+- Java 17 to Java 22
 - Spring Boot 3.2.1
 - Spring Kafka
 - Jackson (JSON processing)
