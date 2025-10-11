@@ -8,6 +8,11 @@ import {
 import '@xyflow/react/dist/style.css'
 import { QueryNodeData, QueryRFNode } from '../components/Node'
 import { demoNodes } from '../mock-data/mock-data'
+import '@xyflow/react/dist/style.css';
+import DirectedEdge from '../components/DirectedEdge';
+
+const directedEdgeType = {default: DirectedEdge};
+
 
 // map your component
 const nodeTypes = { queryNode: QueryRFNode }
@@ -103,6 +108,7 @@ export default function TreePage() {
         onInit={onInit}
         fitView
         proOptions={proOptions}
+        edgeTypes={directedEdgeType}
       />
     </div>
   )
