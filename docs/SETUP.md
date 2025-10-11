@@ -64,7 +64,7 @@ This system **tracks and monitors Trino queries** in real-time:
        ↓
 ┌─────────────┐
 │  Backend    │ Parses & stores
-│  (Port 8080)│ Spring Boot + Java 22
+│  (Port 8080)│ Spring Boot + Java 21
 └──────┬──────┘
        │ REST APIs
        ↓
@@ -87,13 +87,13 @@ This system **tracks and monitors Trino queries** in real-time:
 
 ### Required:
 - **Docker Desktop** (for running services)
-- **Java 22** (for backend)
+- **Java 21** (for backend)
   ```bash
   # Check Java version
-  java -version  # Should show 22.x.x
+  java -version  # Should show 21.x.x
 
-  # Install Java 22 (macOS with Homebrew)
-  brew install openjdk@22
+  # Install Java 21 (macOS with Homebrew)
+  brew install openjdk@21
   ```
 - **Maven** (for building backend)
   ```bash
@@ -146,11 +146,11 @@ docker ps
 ```bash
 cd backend
 
-# Option 1: Using helper script (sets Java 22 automatically)
+# Option 1: Using helper script (sets Java 21 automatically)
 ./run.sh
 
 # Option 2: Using Maven directly
-export JAVA_HOME=$(/usr/libexec/java_home -v 22)
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 mvn spring-boot:run
 ```
 
@@ -284,8 +284,8 @@ cd backend && ./run.sh
 
 **Solution:**
 ```bash
-# Set Java 22 explicitly
-export JAVA_HOME=$(/usr/libexec/java_home -v 22)
+# Set Java 21 explicitly
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 mvn clean install
 mvn spring-boot:run
 ```
