@@ -113,47 +113,26 @@ export const setStatusColor = (state: QueryNodeData['status']) => {
   }
 }
 
-// export const setStatusIcon = (state: NodeProps['state']) => {
-//   switch(state.status) {
-//     case 'unknown':
-//       return <QuestionMark />;
-//     case 'error':
-//       return <SentimentVeryDissatisfied />;
-//     case 'warning':
-//       return <SentimentNeutral />;
-//     case 'working':
-//       return <SentimentSatisfiedAlt />;
-//     case 'finished':
-//       return <Check />;
-//   }
+export const setStatusIcon = (state: QueryNodeData['status']) => {
+  switch(state) {
+    case 'queued':
+      return <HourglassBottom />;
+    case 'failed':
+      return <SentimentVeryDissatisfied />;
+    case 'idle':
+      return <SentimentNeutral />;
+    case 'ok':
+      return <SentimentSatisfiedAlt/>;
+    case 'finished':
+      return <Check />;
+    case 'unknown':
+      return <QuestionMark />;
+  }
+}
 
-// }
-
-
-// export default memo(({ state, dateTimeInstantiated, dateTimeCompleted, payload, numberOfConnectors, edges, isExpanded, isFocused}: NodeProps) => {
-//   return (
-//     <>
-//       <div>
-//         {/* TODO: populate with props*/}
-//         {state.status}
-//         {state.color}
-//         {state.icon}
-//         {state.altText}
-//         {dateTimeInstantiated}
-//         {dateTimeCompleted}
-//         {payload}
-//         {numberOfConnectors}
-//         {edges}
-//         {isExpanded}
-//         {isFocused}
-//       </div>
-//       <Box component="dl" role="status" sx={{width: '100%', height: '100%', backgroundColor: 'red'}}></Box>
-//     </>
-//   );
-// });
-import * as React from "react";
-import { Box, Chip, Typography, Divider } from "@mui/material";
+import * as React from "react";import { Box, Chip, Typography, Divider } from "@mui/material";
 import { Handle, Position } from "@xyflow/react";
+import { HourglassBottom, QuestionMark, SentimentSatisfiedAlt, SentimentVeryDissatisfied, SentimentNeutral, Check } from "@mui/icons-material";
 
 /**
  * Semantic, modular query tree built on MUI <Box> while preserving native HTML semantics.
@@ -492,6 +471,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
       <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: 1, rowGap: .5 }}>
         {typeof n.rows === 'number' && (<><Box component="dt" sx={{ fontWeight: 600 }}>Rows</Box><Box component="dd" sx={{ m: 0 }}>{n.rows.toLocaleString()}</Box></>)}
         {typeof n.durationMs === 'number' && (<><Box component="dt" sx={{ fontWeight: 600 }}>Duration</Box><Box component="dd" sx={{ m: 0 }}>{n.durationMs} ms</Box></>)}
+        {n.status && (<><Box component="dt" sx={{ fontWeight: 600 }}>Status</Box><Box component="dd" sx={{ m: 0 }}>{setStatusIcon(n.status)}</Box></>)}
       </Box>
       <Handle id="in"  type="target" position={Position.Top} />
       <Handle id="out" type="source" position={Position.Bottom} />
