@@ -493,6 +493,8 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
       </Box>
       <Handle id="in"  type="target" position={Position.Top} />
       <Handle id="out" type="source" position={Position.Bottom} />
+      <Handle id="out" type="source" position={Position.Left} />
+      <Handle id="in" type="source" position={Position.Right} />
     </Box>
   );
 }
