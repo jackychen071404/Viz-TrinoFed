@@ -170,11 +170,11 @@ function StatusChip({ status }: { status?: QueryNodeData["status"] }) {
   if (!status) return null;
   const color =
     status === "ok" ? "success" :
-    status === "idle" ? "info" :
+    status === "idle" ? "warning" :
     status === "failed" ? "error" :
     "default";
   const label = status.charAt(0).toUpperCase() + status.slice(1);
-  return <Chip size="small" color={color as any} label={label} sx={{ fontWeight: 600 }} />;
+  return <Chip size="small" color={color as any} label={label} sx={{ fontWeight: 600, position: 'absolute', bottom: 10, right: 10, padding:0 }} />;
 }
 
 export function QueryNode({
@@ -284,6 +284,7 @@ export function QueryNode({
                 m: 0,
                 display: "grid",
                 gap: 1,
+                padding: 1,
                 borderLeft: theme => `2px dashed ${theme.palette.divider}`,
               }}>
                 {children.map(child => (
@@ -332,7 +333,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {n.title ?? n.stage}
         </Typography>
-        <Box sx={{ ml: 'auto' }}>{/* optional status chip */}</Box>
+        <Box sx={{ ml: 'auto' }}>{ StatusChip({ status: n.status })}</Box>
       </Box>
       {n.connector && (
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
