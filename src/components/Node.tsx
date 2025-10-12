@@ -1,30 +1,15 @@
-// /*Node component for query tree*/
-// /*DO: it should have a dynamic number of connectors */
-// /*TODO: it should have five states dictated by color: 
-// blue (status unknown), red (error), green (working), gray (finished),
-// each with a responding icon*/
-// /*TODO: it should have a button to expand into a modal with more details*/
-// /*TODO: it should have a button to collapse into a smaller node*/
-// /*TODO: it should detect collisions with other nodes and adjust its position accordingly*/
-// /*TODO: it should make sure edges don't cross over other nodes or wrap around the node*/
-// /*TODO: each node should have alt-text for screen readers*/
-// /*TODO: each node should be tabbable and focusable*/
-// /*TODO: each node should have a tooltip with more details*/
-// /*TODO: it should have a timestamp for when the node was instantiated*/
-// /*TODO: it should have a timestamp for when the node was completed/failed*/
-// /*TODO: it should not allow invalid edges*/
-// /*TODO: it should have a button to copy the node to the clipboard*/
-
-
-// /* TODO: implement methods: 
-// createBoundingBox,
-// validateEdges
-// copyToClipboard, 
-// hydrateNode,
-// updatePayload
-// updateState
-// */
-
+import * as React from "react";import { Box, Chip, Typography, Divider } from "@mui/material";
+import { Handle, Position } from "@xyflow/react";
+import { 
+  HourglassBottom, 
+  QuestionMark, 
+  SentimentSatisfiedAlt, 
+  SentimentVeryDissatisfied, 
+  SentimentNeutral, 
+  Check,
+  ContentCopy,
+  OpenInNew,
+} from "@mui/icons-material";
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
   switch(state) {
@@ -60,25 +45,7 @@ export const setStatusIcon = (state: QueryNodeData['status']) => {
   }
 }
 
-import * as React from "react";import { Box, Chip, Typography, Divider } from "@mui/material";
-import { Handle, Position } from "@xyflow/react";
-import { HourglassBottom, QuestionMark, SentimentSatisfiedAlt, SentimentVeryDissatisfied, SentimentNeutral, Check } from "@mui/icons-material";
 
-/**
- * Semantic, modular query tree built on MUI <Box> while preserving native HTML semantics.
- * - Tree: <ul>/<li>
- * - Disclosure: <details>/<summary>
- * - Metrics: <dl>/<dt>/<dd>, plus <time>, <meter>, <data>, <code>
- *
- * Why this approach?
- *  - Native keyboard + a11y from <details>/<summary>
- *  - Clean separation between QueryTree and QueryNode
- *  - MUI sx styling without losing semantics via Box's `component` prop
- */
-
-// -----------------------------
-// Types
-// -----------------------------
 export type MeterMetric = {
   kind: "meter";
   label: string;
@@ -132,13 +99,11 @@ export interface QueryNodeData {
   timestamp?: string; // ISO string for when stage started
   metrics?: QueryMetric[]; // detailed metrics
   children?: QueryNodeData[];
+  next?: QueryNodeData;
   /** Whether the node is expanded initially */
   defaultOpen?: boolean;
 }
 
-// -----------------------------
-// Helper Components (semantic blocks styled via MUI)
-// -----------------------------
 function MetricList({ metrics }: { metrics?: QueryMetric[] }) {
   if (!metrics || metrics.length === 0) return null;
 
@@ -212,9 +177,6 @@ function StatusChip({ status }: { status?: QueryNodeData["status"] }) {
   return <Chip size="small" color={color as any} label={label} sx={{ fontWeight: 600 }} />;
 }
 
-// -----------------------------
-// QueryNode (modular, reusable)
-// -----------------------------
 export function QueryNode({
   id,
   stage,
@@ -237,7 +199,7 @@ export function QueryNode({
         borderRadius: 2,
         p: 1.25,
         '&[open]': { boxShadow: 1 },
-      }}>
+      }}>      
         <Box component="summary" sx={{
           listStyle: "none",
           cursor: "pointer",
@@ -355,28 +317,6 @@ export function QueryTree({ nodes }: { nodes: QueryNodeData[] }) {
 }
 
 
-
-// export default function DemoQueryTree() {
-//   return (
-//     <Box sx={{ p: 2 }}>
-//       <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 800 }}>
-//         Query Lifecycle Tree (Semantic + MUI Box)
-//       </Typography>
-//       <QueryTree nodes={demoNodes} />
-//     </Box>export default function DemoQueryTree() {
-//   return (
-//     <Box sx={{ p: 2 }}>
-//       <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 800 }}>
-//         Query Lifecycle Tree (Semantic + MUI Box)
-//       </Typography>
-//       <QueryTree nodes={demoNodes} />
-//     </Box>
-//   );
-// }
-
-//   );
-// }
-// components/Node.tsx
 export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
   const n = data.node;
   return (
@@ -386,6 +326,8 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         bgcolor: setStatusColor(n.status), p: 1.25, boxShadow: 1,
         '&:focus-visible': { boxShadow: 3, borderColor: 'primary.main' },
       }}>
+      <ContentCopy sx={{ position: 'absolute', top: 0, right: 0, padding: 1 }} />
+      <OpenInNew sx={{ position: 'absolute', top: 0, right: 40, padding: 1 }} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {n.title ?? n.stage}
@@ -403,10 +345,13 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         {typeof n.durationMs === 'number' && (<><Box component="dt" sx={{ fontWeight: 600 }}>Duration</Box><Box component="dd" sx={{ m: 0 }}>{n.durationMs} ms</Box></>)}
         {n.status && (<><Box component="dt" sx={{ fontWeight: 600 }}>Status</Box><Box component="dd" sx={{ m: 0 }}>{setStatusIcon(n.status)}</Box></>)}
       </Box>
-      <Handle id="in"  type="target" position={Position.Top} />
-      <Handle id="out" type="source" position={Position.Bottom} />
-      <Handle id="out" type="source" position={Position.Left} />
-      <Handle id="in" type="source" position={Position.Right} />
+      <Handle id="inTop"     type="target" position={Position.Top} />
+      <Handle id="outBottom" type="source" position={Position.Bottom} />
+      <Handle id="in"        type="target" position={Position.Left} />
+      <Handle id="out"       type="source" position={Position.Right} />
     </Box>
   );
 }
+
+
+

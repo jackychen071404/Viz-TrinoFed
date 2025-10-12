@@ -23,7 +23,7 @@ export const demoNodes: QueryNodeData[] = [
           id: "q_8f2a_scan",
           stage: "Scan",
           title: "Scan — orders",
-          status: "ok",
+          status: "idle",
           rows: 12345,
           durationMs: 40,
           metrics: [
@@ -43,6 +43,13 @@ export const demoNodes: QueryNodeData[] = [
           ],
         },
       ],
+      next: {
+        id: "q_8f2a_2",
+        stage: "Execution",
+        title: "Execution — PostgreSQL",
+        connector: "PostgreSQL",
+        status: "queued",
+      },
     },
     {
       id: "q_8f2a_2",
@@ -54,6 +61,13 @@ export const demoNodes: QueryNodeData[] = [
       rows: 87654,
       timestamp: new Date().toISOString(),
       defaultOpen: true,
+      next: {
+        id: "q_8f2a_3",
+        stage: "Execution",
+        title: "Execution — PostgreSQL",
+        connector: "PostgreSQL",
+        status: "queued",
+      },
       children: [
         {
           id: "q_8f2a_2_scan",
@@ -92,7 +106,9 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Error", value: "Connection timed out" },
       ],
-      children: [],
+      children: [
+        {id: "q_8f2a_4", stage: "Execution", title: "Execution — PostgreSQL", connector: "PostgreSQL", status: "finished", timestamp: new Date().toISOString(), defaultOpen: true, metrics: [{ kind: "text", label: "Finished", value: "true" }], children: []},
+      ],
     },
     {
       id: "q_8f2a_4",
@@ -105,7 +121,7 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Finished", value: "true" },
       ],
-      children: [],
+      children: [{id: "q_8f2a_5", stage: "Execution", title: "Execution — PostgreSQL", connector: "PostgreSQL", status: "unknown", timestamp: new Date().toISOString(), defaultOpen: true, metrics: [{ kind: "text", label: "Unknown", value: "true" }], children: []}],
     },
     {
       id: "q_8f2a_5",
@@ -118,7 +134,14 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Unknown", value: "true" },
       ],
-      children: [],
+      children: [{id: "q_8f2a_6", stage: "Execution", title: "Execution — PostgreSQL", connector: "PostgreSQL", status: "finished", timestamp: new Date().toISOString(), defaultOpen: true, metrics: [{ kind: "text", label: "Finished", value: "true" }], children: []}],
+      next: {
+        id: "q_8f2a_5",
+        stage: "Execution",
+        title: "Execution — PostgreSQL",
+        connector: "PostgreSQL",
+        status: "unknown",
+      },
     },
     {
       id: "q_8f2a_6",
@@ -131,7 +154,7 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Finished", value: "true" },
       ],
-      children: []
+      children: [{id: "q_8f2a_7", stage: "Execution", title: "Execution — PostgreSQL", connector: "PostgreSQL", status: "finished", timestamp: new Date().toISOString(), defaultOpen: true, metrics: [{ kind: "text", label: "Finished", value: "true" }], children: []}],
     },
     {
       id: "q_8f2a_7",
@@ -144,7 +167,14 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Finished", value: "true" },
       ],
-      children: []
+      children: [],
+      next: {
+        id: "q_8f2a_8",
+        stage: "Execution",
+        title: "Execution — PostgreSQL",
+        connector: "PostgreSQL",
+        status: "finished",
+      },
     },
     {
       id: "q_8f2a_8",
@@ -157,7 +187,14 @@ export const demoNodes: QueryNodeData[] = [
       metrics: [
         { kind: "text", label: "Finished", value: "true" },
       ],
-      children: []
+      children: [],
+      next: {
+        id: "q_8f2a_9",
+        stage: "Execution",
+        title: "Execution — PostgreSQL",
+        connector: "PostgreSQL",
+        status: "finished",
+      },
     },
     {
       id: "q_8f2a_9",
