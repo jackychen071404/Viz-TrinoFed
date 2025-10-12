@@ -14,43 +14,6 @@
 // /*TODO: it should have a timestamp for when the node was completed/failed*/
 // /*TODO: it should not allow invalid edges*/
 // /*TODO: it should have a button to copy the node to the clipboard*/
-// import  { memo, useRef, useCallback } from 'react';
-// import { Edge, Position } from '@xyflow/react';
-// import { SentimentSatisfiedAlt, SentimentVeryDissatisfied, SentimentNeutral, Check, QuestionMark } from '@mui/icons-material';
-// import { Box, Button, Tooltip, Typography } from '@mui/material';
-
-//   export interface NodeProps {
-//   id: string;
-//   fragmentId: string;
-//   title?: string;
-//   connector?: string;
-//   operators?: string
-//   cpuMs?: number;
-//   wallMs?: number;
-//   processedRows?: number;
-//   processedBytes?: number;
-//   splits?: {queued: number;
-//     running: number;
-//     completed: number;
-//     failed: number;
-//     total: number;
-//   }
-//   error?: string;
-//   state: {
-//     status: 'unknown' | 'error' | 'warning' | 'working' | 'finished';
-//     color: string;
-//     icon: string; 
-//     altText: string;
-//   }
-//   dateTimeInstantiated: Date;
-//   dateTimeCompleted: Date | null;
-//   /* TODO: implement and import interface based on server-side tree data structure*/
-//   payload?: any;
-//   numberOfConnectors: number;
-//   edges: Edge[];
-//   isExpanded: boolean;
-//   isFocused: boolean;
-// }
 
 
 // /* TODO: implement methods: 
@@ -61,40 +24,7 @@
 // updatePayload
 // updateState
 // */
-// export const formatSize = (bytes: number) => {
-//   if(!bytes && bytes !== 0) return '-';
-//   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-//   let index = 0;
-//   let size = bytes;
-//   while(size >= 1024 && index < units.length - 1) {
-//     size /= 1024;
-//     index++;
-//   }
-//   return `${size.toFixed(2)} ${units[index]}`;
-// }
 
-// export const formatTime = (ms: number) => {
-//   if(!ms && ms !== 0) return '-';
-//   const units = ['ms', 's', 'm', 'h', 'd'];
-//   let index = 0;
-//   let time = ms;
-//   while(time >= 1000 && index < units.length - 1) {
-//     time /= 1000;
-//     index++;
-//   }
-//   return `${time.toFixed(2)} ${units[index]}`;
-// }
-
-// export const formatNumber = (num: number) =>
-// {
-//   if(!num && num !== 0) return '-';
-//   return num.toLocaleString();
-// }
-
-// export const formatDate = (date: Date) => {
-//   if(!date) return '-';
-//   return date.toLocaleString();
-// }
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
   switch(state) {
@@ -107,7 +37,7 @@ export const setStatusColor = (state: QueryNodeData['status']) => {
     case 'ok':
       return '#22c601';
     case 'finished':
-      return '#0139c6';
+      return '#608dff';
     case 'unknown':
       return '#cdcdcd';
   }
