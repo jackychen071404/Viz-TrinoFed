@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   ReactFlow, applyNodeChanges, applyEdgeChanges,
   type NodeChange, type EdgeChange,
@@ -10,21 +10,90 @@ import dagre from '@dagrejs/dagre';
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { Position } from '@xyflow/react';
 import DirectedEdge from '../components/DirectedEdge';
-import QueryNode from '../components/QueryNode';
+import { QueryRFNode, QueryNodeData } from '../components/Node';
 import QueryPlanPanel from '../components/QueryPlanPanel';
 import QueryMetricsPanel from '../components/QueryMetricsPanel';
 import { apiService } from '../services/api.service';
-import { QueryTree } from '../types/api.types';
-import { transformQueryTreeToReactFlow } from '../utils/treeTransform';
+import { QueryTree, QueryTreeNode } from '../types/api.types';
 
 const elk = new ELK();
-const NODE_W = 280;
-const NODE_H = 140;
+const NODE_W = 300;
+const NODE_H = 160;
 const directedEdgeTypes = { directed: DirectedEdge };
-const nodeTypes = { queryNode: QueryNode };
+const nodeTypes = { queryNode: QueryRFNode };
 const proOptions: ProOptions = { hideAttribution: true };
 
-async function layoutWithElk(nodes: Node[], edges: Edge[]) {
+// Map state to status
+function mapState(state: string): QueryNodeData['status'] {
+  const s = state.toLowerCase();
+  if (s.includes('finish') || s.includes('complete')) return 'finished';
+  if (s.includes('fail') || s.includes('error')) return 'failed';
+  if (s.includes('running')) return 'ok';
+  if (s.includes('queued')) return 'queued';
+  if (s.includes('idle')) return 'idle';
+  return 'unknown';
+}
+
+// Convert backend QueryTreeNode to QueryNodeData format
+function convertToQueryNodeData(node: QueryTreeNode): QueryNodeData {
+  return {
+    id: node.id,
+    stage: node.nodeType || node.operatorType || 'Query Stage',
+    title: node.operatorType || node.nodeType || 'Query Node',
+    connector: node.sourceSystem || undefined,
+    status: mapState(node.state),
+    durationMs: node.executionTime || node.wallTime || undefined,
+    rows: node.outputRows || node.inputRows || undefined,
+    timestamp: undefined,
+    children: node.children?.map(convertToQueryNodeData),
+  };
+}
+
+// Convert events to QueryNodeData timeline
+function createEventTimeline(queryTree: QueryTree): QueryNodeData[] {
+  const events = queryTree.events || [];
+  if (events.length === 0) return [];
+
+  return events.map((event, index) => {
+    const node: QueryNodeData = {
+      id: `${queryTree.queryId}-event-${index}`,
+      stage: event.eventType,
+      title: `${event.eventType} - ${event.state}`,
+      connector: event.catalog || event.source || undefined,
+      status: mapState(event.state),
+      durationMs: event.cpuTimeMs || event.wallTimeMs || undefined,
+      rows: event.totalRows || undefined,
+      timestamp: event.timestamp,
+      metrics: [
+        { kind: 'text', label: 'Event Type', value: event.eventType },
+        { kind: 'text', label: 'State', value: event.state },
+        { kind: 'text', label: 'User', value: event.user },
+        ...(event.cpuTimeMs ? [{ kind: 'text' as const, label: 'CPU Time', value: `${event.cpuTimeMs} ms` }] : []),
+        ...(event.wallTimeMs ? [{ kind: 'text' as const, label: 'Wall Time', value: `${event.wallTimeMs} ms` }] : []),
+        ...(event.queuedTimeMs ? [{ kind: 'text' as const, label: 'Queued Time', value: `${event.queuedTimeMs} ms` }] : []),
+        ...(event.totalRows ? [{ kind: 'text' as const, label: 'Total Rows', value: event.totalRows.toLocaleString() }] : []),
+        ...(event.totalBytes ? [{ kind: 'text' as const, label: 'Total Bytes', value: `${(event.totalBytes / 1024 / 1024).toFixed(2)} MB` }] : []),
+        ...(event.peakMemoryBytes ? [{ kind: 'text' as const, label: 'Peak Memory', value: `${(event.peakMemoryBytes / 1024 / 1024).toFixed(2)} MB` }] : []),
+        ...(event.completedSplits ? [{ kind: 'text' as const, label: 'Completed Splits', value: event.completedSplits.toString() }] : []),
+      ],
+    };
+
+    // Create next relationship for timeline
+    if (index < events.length - 1) {
+      node.next = {
+        id: `${queryTree.queryId}-event-${index + 1}`,
+        stage: events[index + 1].eventType,
+        title: `${events[index + 1].eventType} - ${events[index + 1].state}`,
+        status: mapState(events[index + 1].state),
+      };
+    }
+
+    return node;
+  });
+}
+
+// ELK Layout
+async function layoutWithElk(nodes: Node<{ node: QueryNodeData }>[], edges: Edge[]) {
   const graph = {
     id: 'root',
     layoutOptions: {
@@ -63,14 +132,14 @@ async function layoutWithElk(nodes: Node[], edges: Edge[]) {
     const ln = res.children!.find((c: any) => c.id === n.id)!;
     return {
       ...n,
-      position: { x: ln.x, y: ln.y },
+      position: { x: ln.x ?? 0, y: ln.y ?? 0 },
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
     };
   });
 
   const posEdges = edges.map(e => {
-    const le = res.edges!.find((x: any) => x.id === e.id);
+    const le = res.edges!.find((x: any) => x.id === e.id) as any;
     if (!le?.sections?.[0]) return e;
     const sec = le.sections[0];
     const points = [
@@ -84,8 +153,96 @@ async function layoutWithElk(nodes: Node[], edges: Edge[]) {
   return { nodes: posNodes, edges: posEdges };
 }
 
+// Dagre layout helper
+function dagreLayoutLR(nodes: Node[], edges: Edge[]) {
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: 'LR', nodesep: 100, ranksep: 200 });
+  g.setDefaultEdgeLabel(() => ({}));
+  nodes.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
+  edges.forEach(e => g.setEdge(e.source, e.target));
+  dagre.layout(g);
+  nodes.forEach(n => {
+    const p = g.node(n.id);
+    n.position = { x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 };
+    (n as any).sourcePosition = Position.Right;
+    (n as any).targetPosition = Position.Left;
+  });
+}
+
+// Convert QueryNodeData tree to ReactFlow nodes and edges
+function toReactFlow(nodes: QueryNodeData[]) {
+  const rfNodes: Node<{ node: QueryNodeData }>[] = [];
+  const rfEdges: Edge[] = [];
+  const seen = new Set<string>();
+
+  // Gather all nodes (top-level + children + next) exactly once
+  const addNode = (n: QueryNodeData) => {
+    if (seen.has(n.id)) return;
+    seen.add(n.id);
+    rfNodes.push({
+      id: n.id,
+      type: 'queryNode',
+      position: { x: 0, y: 0 },
+      data: { node: n },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+    n.children?.forEach(addNode);
+    if (n.next) addNode(n.next);
+  };
+
+  nodes.forEach(addNode);
+
+  // Child edges: parent -> child (top→bottom handles)
+  const addChildEdges = (n: QueryNodeData) => {
+    n.children?.forEach((c) => {
+      if (n.id !== c.id) {
+        rfEdges.push({
+          id: `${n.id}__child__${c.id}`,
+          source: n.id,
+          sourceHandle: 'outBottom',
+          target: c.id,
+          targetHandle: 'inTop',
+          type: 'directed',
+          style: { stroke: '#1976d2', strokeWidth: 3 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#1976d2', width: 20, height: 20 },
+        });
+        addChildEdges(c);
+      }
+    });
+    if (n.next && n.id !== n.next.id) {
+      // Next edges: current -> next (left→right handles)
+      rfEdges.push({
+        id: `${n.id}__next__${n.next.id}`,
+        source: n.id,
+        sourceHandle: 'out',
+        target: n.next.id,
+        targetHandle: 'in',
+        type: 'directed',
+        style: { stroke: '#1976d2', strokeWidth: 3 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#1976d2', width: 20, height: 20 },
+      });
+      addChildEdges(n.next);
+    }
+  };
+  nodes.forEach(addChildEdges);
+
+  // Sanity check
+  const ids = new Set(rfNodes.map(n => n.id));
+  rfEdges.forEach(e => {
+    if (!ids.has(e.source) || !ids.has(e.target)) {
+      console.warn('Dangling edge', e);
+    }
+  });
+
+  // Layout with dagre
+  dagreLayoutLR(rfNodes, rfEdges);
+
+  return { nodes: rfNodes, edges: rfEdges };
+}
+
 const TreePage: React.FC = () => {
-  const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodes, setNodes] = useState<Node<{ node: QueryNodeData }>[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,17 +252,43 @@ const TreePage: React.FC = () => {
     const loadLatestQuery = async () => {
       try {
         const queries = await apiService.getAllQueries();
+        
         if (queries.length > 0) {
           const latest = queries[queries.length - 1];
           setCurrentQuery(latest);
 
-          if (latest.root) {
-            const { nodes: newNodes, edges: newEdges } = transformQueryTreeToReactFlow(latest.root, latest.events);
-            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(newNodes, newEdges);
+          // Check if we have a complex tree structure or just simple events
+          const hasComplexTree = latest.root?.children && latest.root.children.length > 0;
+          
+          let nodesToVisualize: QueryNodeData[];
+          let isEventTimeline = false;
+          
+          if (hasComplexTree && latest.root) {
+            // Convert backend data to QueryNodeData format for complex trees
+            nodesToVisualize = [convertToQueryNodeData(latest.root)];
+            isEventTimeline = false;
+          } else if (latest.events && latest.events.length > 0) {
+            // Create event timeline for simple queries
+            nodesToVisualize = createEventTimeline(latest);
+            isEventTimeline = true;
+          } else {
+            setError('No visualization data available');
+            return;
+          }
+            
+          // Generate React Flow nodes and edges
+          const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize);
+          
+          // Apply ELK layout only for complex trees (event timelines already have dagre layout)
+          if (isEventTimeline) {
+            // Event timelines already have good layout from dagre
+            setNodes(rfNodes);
+            setEdges(rfEdges);
+          } else {
+            // Apply ELK layout for complex tree structures
+            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(rfNodes, rfEdges);
             setNodes(laidOut);
             setEdges(laidEdges);
-          } else {
-            setError('Query has no tree structure');
           }
         } else {
           setError('No queries found. Run a query in Trino to see visualization.');
@@ -124,7 +307,7 @@ const TreePage: React.FC = () => {
   }, []);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns)),
+    (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns) as Node<{ node: QueryNodeData }>[]),
     []
   );
 
@@ -134,8 +317,8 @@ const TreePage: React.FC = () => {
   );
 
   const onInit = useCallback(
-    (rfi: ReactFlowInstance) => {
-      rfi.fitView({ padding: 0.2 });
+    (rfi: ReactFlowInstance<Node<{ node: QueryNodeData }>, Edge>) => {
+      rfi.fitView({ padding: 0.1 });
     },
     []
   );
@@ -168,7 +351,11 @@ const TreePage: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onInit={onInit}
         fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.5, minZoom: 0.5 }}
+        fitViewOptions={{
+          padding: 0.2,
+          maxZoom: 1.5,
+          minZoom: 0.5,
+        }}
         proOptions={proOptions}
         nodeExtent={[[ -200, -200 ], [ 20000, 12000 ]]}
       >
