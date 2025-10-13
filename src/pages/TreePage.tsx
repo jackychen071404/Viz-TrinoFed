@@ -1,29 +1,88 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
-  ReactFlow,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge,
-  NodeChange,
-  EdgeChange,
-  Connection,
-  Node,
-  Edge,
-  ProOptions,
-  ReactFlowInstance,
-  Background,
-  Controls,
-  MiniMap,
+  ReactFlow, applyNodeChanges, applyEdgeChanges,
+  type NodeChange, type EdgeChange,
+  type Node, type Edge, type ReactFlowInstance, type ProOptions,
+  MarkerType, Background, Controls, MiniMap
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { apiService } from '../services/api.service';
-import { transformQueryTreeToReactFlow } from '../utils/treeTransform';
-import { QueryTree } from '../types/api.types';
+import dagre from '@dagrejs/dagre';
+import ELK from 'elkjs/lib/elk.bundled.js';
+import { Position } from '@xyflow/react';
+import DirectedEdge from '../components/DirectedEdge';
 import QueryNode from '../components/QueryNode';
 import QueryPlanPanel from '../components/QueryPlanPanel';
 import QueryMetricsPanel from '../components/QueryMetricsPanel';
+import { apiService } from '../services/api.service';
+import { QueryTree } from '../types/api.types';
+import { transformQueryTreeToReactFlow } from '../utils/treeTransform';
 
+const elk = new ELK();
+const NODE_W = 280;
+const NODE_H = 140;
+const directedEdgeTypes = { directed: DirectedEdge };
+const nodeTypes = { queryNode: QueryNode };
 const proOptions: ProOptions = { hideAttribution: true };
+
+async function layoutWithElk(nodes: Node[], edges: Edge[]) {
+  const graph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'DOWN',
+      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.portConstraints': 'FIXED_SIDE',
+      'elk.spacing.nodeNode': '40',
+      'elk.spacing.edgeNode': '20',
+      'elk.spacing.edgeEdge': '20',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+      'elk.layered.crossingMinimization.strategy': 'INTERACTIVE',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+    },
+    children: nodes.map(n => ({
+      id: n.id,
+      width: NODE_W,
+      height: NODE_H,
+      ports: [
+        { id: 'in',        properties: { 'org.eclipse.elk.port.side': 'WEST'  } },
+        { id: 'out',       properties: { 'org.eclipse.elk.port.side': 'EAST'  } },
+        { id: 'inTop',     properties: { 'org.eclipse.elk.port.side': 'NORTH' } },
+        { id: 'outBottom', properties: { 'org.eclipse.elk.port.side': 'SOUTH' } },
+      ],
+    })),
+    edges: edges.map(e => ({
+      id: e.id,
+      sources: [`${e.source}#${e.sourceHandle ?? 'out'}`],
+      targets: [`${e.target}#${e.targetHandle ?? 'in'}`],
+    })),
+  };
+
+  const res = await elk.layout(graph);
+
+  const posNodes = nodes.map(n => {
+    const ln = res.children!.find((c: any) => c.id === n.id)!;
+    return {
+      ...n,
+      position: { x: ln.x, y: ln.y },
+      targetPosition: Position.Left,
+      sourcePosition: Position.Right,
+    };
+  });
+
+  const posEdges = edges.map(e => {
+    const le = res.edges!.find((x: any) => x.id === e.id);
+    if (!le?.sections?.[0]) return e;
+    const sec = le.sections[0];
+    const points = [
+      ...(sec.startPoint ? [sec.startPoint] : []),
+      ...(sec.bendPoints ?? []),
+      ...(sec.endPoint ? [sec.endPoint] : []),
+    ].map((p: any) => ({ x: p.x, y: p.y }));
+    return { ...e, data: { ...(e.data || {}), points } };
+  });
+
+  return { nodes: posNodes, edges: posEdges };
+}
 
 const TreePage: React.FC = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -32,8 +91,6 @@ const TreePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentQuery, setCurrentQuery] = useState<QueryTree | null>(null);
 
-  const nodeTypes = useMemo(() => ({ queryNode: QueryNode }), []);
-
   useEffect(() => {
     const loadLatestQuery = async () => {
       try {
@@ -41,18 +98,17 @@ const TreePage: React.FC = () => {
         if (queries.length > 0) {
           const latest = queries[queries.length - 1];
           setCurrentQuery(latest);
-          
+
           if (latest.root) {
-            // Pass events to help build a better visualization
-            const { nodes: newNodes, edges: newEdges } = transformQueryTreeToReactFlow(
-              latest.root, 
-              latest.events
-            );
-            setNodes(newNodes);
-            setEdges(newEdges);
+            const { nodes: newNodes, edges: newEdges } = transformQueryTreeToReactFlow(latest.root, latest.events);
+            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(newNodes, newEdges);
+            setNodes(laidOut);
+            setEdges(laidEdges);
           } else {
             setError('Query has no tree structure');
           }
+        } else {
+          setError('No queries found. Run a query in Trino to see visualization.');
         }
       } catch (err) {
         console.error('Failed to load queries:', err);
@@ -61,9 +117,8 @@ const TreePage: React.FC = () => {
         setLoading(false);
       }
     };
-    loadLatestQuery();
 
-    // Poll for updates every 2 seconds
+    loadLatestQuery();
     const interval = setInterval(loadLatestQuery, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -78,16 +133,9 @@ const TreePage: React.FC = () => {
     []
   );
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges(es => addEdge(params, es)),
-    []
-  );
-
   const onInit = useCallback(
-    (reactFlowInstance: ReactFlowInstance) => {
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
-      }, 100);
+    (rfi: ReactFlowInstance) => {
+      rfi.fitView({ padding: 0.2 });
     },
     []
   );
@@ -100,38 +148,29 @@ const TreePage: React.FC = () => {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'red', fontSize: '16px', padding: '20px', textAlign: 'center' }}>{error}</div>;
   }
 
-  if (nodes.length === 0) {
-    return <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '16px', textAlign: 'center', padding: '20px' }}>
-      <p>No queries found. Run a query in Trino to see visualization.</p>
-      <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>Try running: <code>./test-query.sh</code></p>
-    </div>;
-  }
-
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       {currentQuery && (
         <>
           <QueryMetricsPanel query={currentQuery} />
-
           <QueryPlanPanel 
             events={currentQuery.events || []}
             plan={currentQuery.events?.find(e => e.plan)?.plan}
           />
         </>
       )}
-      
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={directedEdgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
         onInit={onInit}
         fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.5, minZoom: 0.5 }}
         proOptions={proOptions}
-        minZoom={0.1}
-        maxZoom={2}
+        nodeExtent={[[ -200, -200 ], [ 20000, 12000 ]]}
       >
         <Background />
         <Controls />

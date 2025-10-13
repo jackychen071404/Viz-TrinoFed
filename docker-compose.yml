@@ -76,6 +76,7 @@ services:
       - ./trino/etc/config.properties:/etc/trino/config.properties:ro
       - ./trino/etc/node.properties:/etc/trino/node.properties:ro
       - ./trino/etc/event-listener.properties:/etc/trino/event-listener.properties:ro
+      - ./trino/kafka:/etc/trino/kafka:ro
     env_file:
       - .env
     networks:
