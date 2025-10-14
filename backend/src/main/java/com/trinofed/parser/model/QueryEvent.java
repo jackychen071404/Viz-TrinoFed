@@ -44,6 +44,21 @@ public class QueryEvent {
     @JsonProperty("schema")
     private String schema;
 
+    @JsonProperty("tableName")
+    private String tableName;
+
+    @JsonProperty("catalogs")
+    private java.util.List<String> catalogs;
+
+    @JsonProperty("schemas")  
+    private java.util.List<String> schemas;
+
+    @JsonProperty("tables")
+    private java.util.List<String> tables;
+
+    @JsonProperty("ioMetadata")
+    private Object ioMetadata;
+
     @JsonProperty("executionTime")
     private Long executionTime;
 

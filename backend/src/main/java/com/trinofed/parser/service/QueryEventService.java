@@ -18,6 +18,9 @@ public class QueryEventService {
 
     private final Map<String, QueryTree> queryTrees = new ConcurrentHashMap<>();
     private final Map<String, List<QueryEvent>> queryEvents = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> catalogQueries = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> schemaQueries = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> tableQueries = new ConcurrentHashMap<>();
     private final SimpMessagingTemplate messagingTemplate;
 
     @Autowired
@@ -31,14 +34,29 @@ public class QueryEventService {
         // Store event
         queryEvents.computeIfAbsent(queryId, k -> new ArrayList<>()).add(event);
 
+        // Track database metadata
+        if (event.getCatalog() != null) {
+            catalogQueries.computeIfAbsent(event.getCatalog(), k -> new HashSet<>()).add(queryId);
+        }
+        if (event.getSchema() != null) {
+            String fullSchema = (event.getCatalog() != null ? event.getCatalog() + "." : "") + event.getSchema();
+            schemaQueries.computeIfAbsent(fullSchema, k -> new HashSet<>()).add(queryId);
+        }
+        if (event.getTableName() != null) {
+            String fullTable = (event.getCatalog() != null ? event.getCatalog() + "." : "") + 
+                             (event.getSchema() != null ? event.getSchema() + "." : "") + event.getTableName();
+            tableQueries.computeIfAbsent(fullTable, k -> new HashSet<>()).add(queryId);
+        }
+
         // Build or update query tree
         QueryTree tree = buildQueryTree(queryId);
 
         // Send update via WebSocket
         messagingTemplate.convertAndSend("/topic/query-updates", tree);
 
-        log.info("Processed event for query: {}, total events: {}",
-                queryId, queryEvents.get(queryId).size());
+        log.info("Processed event for query: {}, catalog: {}, schema: {}, table: {}, total events: {}",
+                queryId, event.getCatalog(), event.getSchema(), event.getTableName(), 
+                queryEvents.get(queryId).size());
     }
 
     private QueryTree buildQueryTree(String queryId) {
@@ -178,5 +196,64 @@ public class QueryEventService {
                 .map(this::buildQueryTree)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    public List<String> getAllCatalogs() {
+        return new ArrayList<>(catalogQueries.keySet());
+    }
+
+    public List<String> getAllSchemas() {
+        return new ArrayList<>(schemaQueries.keySet());
+    }
+
+    public List<String> getAllTables() {
+        return new ArrayList<>(tableQueries.keySet());
+    }
+
+    public List<QueryTree> getQueriesByCatalog(String catalog) {
+        Set<String> queryIds = catalogQueries.get(catalog);
+        if (queryIds == null) {
+            return new ArrayList<>();
+        }
+        return queryIds.stream()
+                .map(this::buildQueryTree)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<QueryTree> getQueriesBySchema(String schema) {
+        Set<String> queryIds = schemaQueries.get(schema);
+        if (queryIds == null) {
+            return new ArrayList<>();
+        }
+        return queryIds.stream()
+                .map(this::buildQueryTree)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<QueryTree> getQueriesByTable(String table) {
+        Set<String> queryIds = tableQueries.get(table);
+        if (queryIds == null) {
+            return new ArrayList<>();
+        }
+        return queryIds.stream()
+                .map(this::buildQueryTree)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public Map<String, Object> getDatabaseSummary() {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("catalogs", getAllCatalogs());
+        summary.put("schemas", getAllSchemas());
+        summary.put("tables", getAllTables());
+        summary.put("totalQueries", queryEvents.size());
+        
+        Map<String, Integer> catalogCounts = new HashMap<>();
+        catalogQueries.forEach((catalog, queries) -> catalogCounts.put(catalog, queries.size()));
+        summary.put("catalogQueryCounts", catalogCounts);
+        
+        return summary;
     }
 }

@@ -174,7 +174,35 @@ public class TrinoEventWrapper {
         private String table;
 
         @JsonProperty("columns")
-        private java.util.List<String> columns;
+        private java.util.List<ColumnInfo> columns;
+
+        @JsonProperty("connectorName")
+        private String connectorName;
+
+        @JsonProperty("catalogVersion")
+        private String catalogVersion;
+
+        @JsonProperty("connectorMetrics")
+        private Object connectorMetrics;
+
+        @JsonProperty("physicalInputBytes")
+        private Long physicalInputBytes;
+
+        @JsonProperty("physicalInputRows")
+        private Long physicalInputRows;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ColumnInfo {
+
+        @JsonProperty("name")
+        private String name;
+
+        @JsonProperty("type")
+        private String type;
     }
 
     @Data
@@ -204,6 +232,7 @@ public class TrinoEventWrapper {
         QueryMetadata metadata = eventPayload.getMetadata();
         QueryStatistics stats = eventPayload.getStatistics();
         QueryContext ctx = eventPayload.getContext();
+        IoMetadata ioMeta = eventPayload.getIoMetadata();
 
         // Parse timestamp from createTime or use current time
         Instant timestamp = Instant.now();
@@ -213,6 +242,65 @@ public class TrinoEventWrapper {
             } catch (Exception e) {
                 // Use current time if parsing fails
             }
+        }
+
+        // Extract database/catalog information from ioMetadata
+        String primaryCatalog = null;
+        String primarySchema = null;
+        String primaryTable = null;
+        java.util.List<String> catalogs = new java.util.ArrayList<>();
+        java.util.List<String> schemas = new java.util.ArrayList<>();
+        java.util.List<String> tables = new java.util.ArrayList<>();
+
+        if (ioMeta != null && ioMeta.getInputs() != null) {
+            for (InputMetadata input : ioMeta.getInputs()) {
+                if (input.getCatalogName() != null) {
+                    catalogs.add(input.getCatalogName());
+                    if (primaryCatalog == null) {
+                        primaryCatalog = input.getCatalogName();
+                    }
+                }
+                if (input.getSchema() != null) {
+                    schemas.add(input.getSchema());
+                    if (primarySchema == null) {
+                        primarySchema = input.getSchema();
+                    }
+                }
+                if (input.getTable() != null) {
+                    tables.add(input.getTable());
+                    if (primaryTable == null) {
+                        primaryTable = input.getTable();
+                    }
+                }
+            }
+        }
+
+        // Build inputs metadata for processing
+        java.util.Map<String, Object> inputsMap = new java.util.HashMap<>();
+        if (ioMeta != null && ioMeta.getInputs() != null) {
+            java.util.List<java.util.Map<String, Object>> inputsList = new java.util.ArrayList<>();
+            for (InputMetadata input : ioMeta.getInputs()) {
+                java.util.Map<String, Object> inputMap = new java.util.HashMap<>();
+                inputMap.put("catalogName", input.getCatalogName());
+                inputMap.put("connectorName", input.getConnectorName());
+                inputMap.put("schema", input.getSchema());
+                inputMap.put("table", input.getTable());
+                
+                // Convert column objects to map format for processing
+                if (input.getColumns() != null) {
+                    java.util.List<java.util.Map<String, Object>> columnsList = new java.util.ArrayList<>();
+                    for (ColumnInfo col : input.getColumns()) {
+                        java.util.Map<String, Object> colMap = new java.util.HashMap<>();
+                        colMap.put("name", col.getName());
+                        colMap.put("type", col.getType());
+                        columnsList.add(colMap);
+                    }
+                    inputMap.put("columns", columnsList);
+                }
+                
+                inputsList.add(inputMap);
+            }
+            inputsMap.put("inputs", inputsList);
         }
 
         return QueryEvent.builder()
@@ -232,6 +320,14 @@ public class TrinoEventWrapper {
                 .completedSplits(stats != null ? stats.getCompletedSplits() : null)
                 .plan(metadata.getPlan())
                 .eventType(determineEventType(metadata.getQueryState()))
+                .catalog(primaryCatalog)
+                .schema(primarySchema)
+                .tableName(primaryTable)
+                .catalogs(catalogs)
+                .schemas(schemas)
+                .tables(tables)
+                .inputs(inputsMap)
+                .ioMetadata(ioMeta)
                 .build();
     }
 
