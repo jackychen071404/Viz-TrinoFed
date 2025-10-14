@@ -39,6 +39,10 @@ public class Database {
     @Builder.Default
     private List<Schema> schemas = new ArrayList<>();
 
+    @JsonProperty("collections")
+    @Builder.Default
+    private List<Collection> collections = new ArrayList<>();
+
     @JsonProperty("metadata")
     private Map<String, Object> metadata;
 
@@ -64,6 +68,39 @@ public class Database {
         @JsonProperty("tables")
         @Builder.Default
         private List<Table> tables = new ArrayList<>();
+
+        @JsonProperty("metadata")
+        private Map<String, Object> metadata;
+
+        @JsonProperty("firstSeen")
+        private Instant firstSeen;
+
+        @JsonProperty("lastSeen")
+        private Instant lastSeen;
+
+        @JsonProperty("totalQueries")
+        @Builder.Default
+        private Integer totalQueries = 0;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Collection {
+
+        @JsonProperty("name")
+        private String name;
+
+        @JsonProperty("documentCount")
+        private Long documentCount;
+
+        @JsonProperty("sizeBytes")
+        private Long sizeBytes;
+
+        @JsonProperty("fields")
+        @Builder.Default
+        private List<Field> fields = new ArrayList<>();
 
         @JsonProperty("metadata")
         private Map<String, Object> metadata;
@@ -129,6 +166,25 @@ public class Database {
 
         @JsonProperty("defaultValue")
         private String defaultValue;
+
+        @JsonProperty("metadata")
+        private Map<String, Object> metadata;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Field {
+
+        @JsonProperty("name")
+        private String name;
+
+        @JsonProperty("type")
+        private String type;
+
+        @JsonProperty("nested")
+        private Boolean nested;
 
         @JsonProperty("metadata")
         private Map<String, Object> metadata;

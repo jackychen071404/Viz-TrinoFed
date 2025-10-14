@@ -17,13 +17,13 @@
     "@mui/icons-material": "^7.3.2",
     "@mui/material": "^7.3.2",
     "@tweenjs/tween.js": "^25.0.0",
-    "@xyflow/react": "^12.0.0",
+    "@xyflow/react": "^12.8.6",
     "d3": "^7.9.0",
     "dagrejs": "^0.2.1",
     "elkjs": "^0.11.0",
     "katex": "^0.16.22",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3"
   },
   "devDependencies": {

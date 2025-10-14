@@ -1,4 +1,5 @@
 import { QueryTree } from '../types/api.types';
+import { Database } from '../types/database.types';
 
 const BASE_URL = 'http://localhost:8080/api';
 
@@ -19,6 +20,11 @@ export const apiService = {
     const response = await fetch(`${BASE_URL}/queries/ids`);
     if (!response.ok) throw new Error('Failed to fetch query IDs');
     return response.json();
+  },
+
+  getDatabases: async (): Promise<Database[]> => {
+    const response = await fetch(`${BASE_URL}/databases`);
+    if (!response.ok) throw new Error('Failed to fetch databases');
+    return response.json();
   }
 };
-

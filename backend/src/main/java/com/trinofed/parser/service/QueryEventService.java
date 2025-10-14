@@ -22,10 +22,12 @@ public class QueryEventService {
     private final Map<String, Set<String>> schemaQueries = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> tableQueries = new ConcurrentHashMap<>();
     private final SimpMessagingTemplate messagingTemplate;
+    private final DatabaseService databaseService;
 
     @Autowired
-    public QueryEventService(SimpMessagingTemplate messagingTemplate) {
+    public QueryEventService(SimpMessagingTemplate messagingTemplate, DatabaseService databaseService) {
         this.messagingTemplate = messagingTemplate;
+        this.databaseService = databaseService;
     }
 
     public void processEvent(QueryEvent event) {
@@ -33,6 +35,15 @@ public class QueryEventService {
 
         // Store event
         queryEvents.computeIfAbsent(queryId, k -> new ArrayList<>()).add(event);
+
+        // Process database information IMMEDIATELY
+        databaseService.processEvent(event);
+        
+        // Invalidate catalog cache to ensure fresh data
+        if (event.getCatalog() != null) {
+            // Force immediate database discovery
+            log.debug("Processing new catalog discovery: {}", event.getCatalog());
+        }
 
         // Track database metadata
         if (event.getCatalog() != null) {

@@ -49,6 +49,19 @@ public class DatabaseService {
         if (event.getPlan() != null) {
             extractDatabasesFromPlan(event.getPlan(), event.getTimestamp());
         }
+
+        // Extract from primary catalog/schema/table fields
+        if (event.getCatalog() != null) {
+            Map<String, Object> syntheticInput = new HashMap<>();
+            syntheticInput.put("catalogName", event.getCatalog());
+            if (event.getSchema() != null) {
+                syntheticInput.put("schema", event.getSchema());
+            }
+            if (event.getTableName() != null) {
+                syntheticInput.put("table", event.getTableName());
+            }
+            processInputMetadata(syntheticInput, event.getTimestamp());
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -73,14 +86,17 @@ public class DatabaseService {
             String tableName = getStringValue(input, "table");
 
             if (catalogName != null) {
+                String dbType = guessDbType(catalogName);
+                
                 Database database = databases.computeIfAbsent(catalogName, k ->
                         Database.builder()
                                 .id(catalogName)
                                 .name(catalogName)
-                                .type(guessDbType(catalogName))
+                                .type(dbType)
                                 .firstSeen(timestamp)
                                 .lastSeen(timestamp)
                                 .totalQueries(0)
+                                .status("ACTIVE")
                                 .build()
                 );
 
@@ -88,84 +104,223 @@ public class DatabaseService {
                 database.setTotalQueries(database.getTotalQueries() + 1);
                 incrementQueryCount(catalogName);
 
-                if (schemaName != null) {
-                    Schema schema = database.getSchemas().stream()
-                            .filter(s -> schemaName.equals(s.getName()))
-                            .findFirst()
-                            .orElseGet(() -> {
-                                Schema newSchema = Schema.builder()
-                                        .name(schemaName)
-                                        .firstSeen(timestamp)
-                                        .lastSeen(timestamp)
-                                        .build();
-                                database.getSchemas().add(newSchema);
-                                return newSchema;
-                            });
+                // Handle MongoDB differently - use collections instead of schemas/tables
+                if ("mongodb".equals(dbType)) {
+                    handleMongoDatabase(database, schemaName, tableName, input, timestamp);
+                } else {
+                    handleRelationalDatabase(database, schemaName, tableName, input, timestamp);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error processing input metadata: {}", e.getMessage());
+        }
+    }
 
-                    schema.setLastSeen(timestamp);
+    private void handleMongoDatabase(Database database, String schemaName, String tableName, 
+                                   Map<String, Object> input, Instant timestamp) {
+        // For MongoDB in Trino:
+        // - "schema" often represents the MongoDB database name (like "sample_db")
+        // - "table" represents the collection name (like "products", "reviews")
+        // We should ONLY create collections for MongoDB, never schemas
+        
+        String collectionName = null;
+        
+        // Priority order for determining collection name:
+        // 1. tableName is the collection
+        // 2. If no tableName but schemaName exists and isn't a system db, use schemaName as collection
+        if (tableName != null && !tableName.isEmpty()) {
+            collectionName = tableName;
+        } else if (schemaName != null && !schemaName.isEmpty() && !isMongoSystemDatabase(schemaName)) {
+            collectionName = schemaName;
+        }
+        
+        log.debug("MongoDB processing - schema: '{}', table: '{}', resolved collection: '{}'", 
+                 schemaName, tableName, collectionName);
+        
+        if (collectionName != null) {
+            Database.Collection collection = database.getCollections().stream()
+                    .filter(c -> collectionName.equals(c.getName()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        Database.Collection newCollection = Database.Collection.builder()
+                                .name(collectionName)
+                                .firstSeen(timestamp)
+                                .lastSeen(timestamp)
+                                .totalQueries(0)
+                                .build();
+                        database.getCollections().add(newCollection);
+                        log.info("Created MongoDB collection: '{}' in database: '{}'", collectionName, database.getId());
+                        return newCollection;
+                    });
 
-                    if (tableName != null) {
-                        Table table = schema.getTables().stream()
-                                .filter(t -> tableName.equals(t.getName()))
-                                .findFirst()
-                                .orElseGet(() -> {
-                                    Table newTable = Table.builder()
-                                            .name(tableName)
-                                            .firstSeen(timestamp)
-                                            .lastSeen(timestamp)
-                                            .totalQueries(0)
-                                            .build();
-                                    schema.getTables().add(newTable);
-                                    return newTable;
-                                });
+            collection.setLastSeen(timestamp);
+            collection.setTotalQueries(collection.getTotalQueries() + 1);
 
-                        table.setLastSeen(timestamp);
-                        table.setTotalQueries(table.getTotalQueries() + 1);
+            // Process MongoDB fields if available
+            if (input.containsKey("columns")) {
+                processMongoFields(collection, input.get("columns"));
+            }
+        }
+        
+        // IMPORTANT: For MongoDB, we do NOT create schemas at all
+        // This ensures MongoDB databases only show collections in the UI
+    }
 
-                        // Process columns if available - handle both array and object formats
-                        if (input.containsKey("columns")) {
-                            Object columnsObj = input.get("columns");
+    private void handleRelationalDatabase(Database database, String schemaName, String tableName, 
+                                        Map<String, Object> input, Instant timestamp) {
+        // For relational databases, maintain the schema -> table hierarchy
+        // PostgreSQL will have schemas like "public", "information_schema", etc.
+        
+        if (schemaName != null && !schemaName.isEmpty()) {
+            // Skip system schemas for cleaner display (but keep "public" as it's the default)
+            if (isSystemSchema(schemaName) && !schemaName.equals("public")) {
+                log.debug("Skipping system schema: '{}'", schemaName);
+                return;
+            }
+            
+            Schema schema = database.getSchemas().stream()
+                    .filter(s -> schemaName.equals(s.getName()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        Schema newSchema = Schema.builder()
+                                .name(schemaName)
+                                .firstSeen(timestamp)
+                                .lastSeen(timestamp)
+                                .totalQueries(0)
+                                .build();
+                        database.getSchemas().add(newSchema);
+                        log.info("Created schema: '{}' in database: '{}'", schemaName, database.getId());
+                        return newSchema;
+                    });
 
-                            if (columnsObj instanceof List) {
-                                // Handle array format
-                                List<?> columnsList = (List<?>) columnsObj;
-                                for (Object columnObj : columnsList) {
-                                    if (columnObj instanceof Map) {
-                                        Map<?, ?> columnMap = (Map<?, ?>) columnObj;
-                                        String columnName = columnMap.get("name") != null ? columnMap.get("name").toString() :
-                                                columnMap.get("column") != null ? columnMap.get("column").toString() : null;
-                                        String columnType = columnMap.get("type") != null ? columnMap.get("type").toString() : null;
+            schema.setLastSeen(timestamp);
+            schema.setTotalQueries(schema.getTotalQueries() + 1);
 
-                                        if (columnName != null && !table.getColumns().stream().anyMatch(c -> columnName.equals(c.getName()))) {
-                                            table.getColumns().add(Column.builder()
-                                                    .name(columnName)
-                                                    .type(columnType)
-                                                    .build());
-                                        }
-                                    }
-                                }
-                            } else if (columnsObj instanceof Map) {
-                                // Handle object format
-                                Map<?, ?> columnsMap = (Map<?, ?>) columnsObj;
-                                for (Object key : columnsMap.keySet()) {
-                                    String columnName = key.toString();
-                                    Object value = columnsMap.get(key);
-                                    String columnType = value != null ? value.toString() : null;
+            if (tableName != null && !tableName.isEmpty()) {
+                // Skip system tables
+                if (isSystemTable(tableName)) {
+                    log.debug("Skipping system table: '{}'", tableName);
+                    return;
+                }
+                
+                Table table = schema.getTables().stream()
+                        .filter(t -> tableName.equals(t.getName()))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Table newTable = Table.builder()
+                                    .name(tableName)
+                                    .firstSeen(timestamp)
+                                    .lastSeen(timestamp)
+                                    .totalQueries(0)
+                                    .build();
+                            schema.getTables().add(newTable);
+                            log.info("Created table: '{}' in schema: '{}' in database: '{}'", 
+                                   tableName, schemaName, database.getId());
+                            return newTable;
+                        });
 
-                                    if (!table.getColumns().stream().anyMatch(c -> columnName.equals(c.getName()))) {
-                                        table.getColumns().add(Column.builder()
-                                                .name(columnName)
-                                                .type(columnType)
-                                                .build());
-                                    }
-                                }
-                            }
+                table.setLastSeen(timestamp);
+                table.setTotalQueries(table.getTotalQueries() + 1);
+
+                // Process columns if available
+                if (input.containsKey("columns")) {
+                    processTableColumns(table, input.get("columns"));
+                }
+            }
+        }
+    }
+
+    private boolean isMongoSystemDatabase(String databaseName) {
+        if (databaseName == null) return false;
+        String lower = databaseName.toLowerCase();
+        return lower.equals("admin") || 
+               lower.equals("local") || 
+               lower.equals("config") ||
+               lower.startsWith("system");
+    }
+
+    private boolean isSystemSchema(String schemaName) {
+        if (schemaName == null) return false;
+        String lower = schemaName.toLowerCase();
+        return lower.equals("information_schema") || 
+               lower.equals("pg_catalog") || 
+               lower.equals("sys") || 
+               lower.startsWith("pg_") ||
+               lower.startsWith("mysql_") ||
+               lower.startsWith("performance_");
+    }
+
+    private boolean isSystemTable(String tableName) {
+        if (tableName == null) return false;
+        String lower = tableName.toLowerCase();
+        return lower.startsWith("pg_") || 
+               lower.startsWith("information_") ||
+               lower.startsWith("sys_") ||
+               lower.startsWith("mysql_");
+    }
+
+    private void processMongoFields(Database.Collection collection, Object fieldsObj) {
+        try {
+            if (fieldsObj instanceof List) {
+                List<?> fieldsList = (List<?>) fieldsObj;
+                for (Object fieldObj : fieldsList) {
+                    if (fieldObj instanceof Map) {
+                        Map<?, ?> fieldMap = (Map<?, ?>) fieldObj;
+                        String fieldName = fieldMap.get("name") != null ? fieldMap.get("name").toString() :
+                                fieldMap.get("column") != null ? fieldMap.get("column").toString() : null;
+                        String fieldType = fieldMap.get("type") != null ? fieldMap.get("type").toString() : null;
+
+                        if (fieldName != null && !collection.getFields().stream().anyMatch(f -> fieldName.equals(f.getName()))) {
+                            collection.getFields().add(Database.Field.builder()
+                                    .name(fieldName)
+                                    .type(fieldType)
+                                    .nested(isNestedType(fieldType))
+                                    .build());
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("Error processing input metadata: {}", e.getMessage());
+            log.warn("Error processing MongoDB fields: {}", e.getMessage());
+        }
+    }
+
+    private void processTableColumns(Table table, Object columnsObj) {
+        try {
+            if (columnsObj instanceof List) {
+                List<?> columnsList = (List<?>) columnsObj;
+                for (Object columnObj : columnsList) {
+                    if (columnObj instanceof Map) {
+                        Map<?, ?> columnMap = (Map<?, ?>) columnObj;
+                        String columnName = columnMap.get("name") != null ? columnMap.get("name").toString() :
+                                columnMap.get("column") != null ? columnMap.get("column").toString() : null;
+                        String columnType = columnMap.get("type") != null ? columnMap.get("type").toString() : null;
+
+                        if (columnName != null && !table.getColumns().stream().anyMatch(c -> columnName.equals(c.getName()))) {
+                            table.getColumns().add(Column.builder()
+                                    .name(columnName)
+                                    .type(columnType)
+                                    .build());
+                        }
+                    }
+                }
+            } else if (columnsObj instanceof Map) {
+                Map<?, ?> columnsMap = (Map<?, ?>) columnsObj;
+                for (Object key : columnsMap.keySet()) {
+                    String columnName = key.toString();
+                    Object value = columnsMap.get(key);
+                    String columnType = value != null ? value.toString() : null;
+
+                    if (!table.getColumns().stream().anyMatch(c -> columnName.equals(c.getName()))) {
+                        table.getColumns().add(Column.builder()
+                                .name(columnName)
+                                .type(columnType)
+                                .build());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error processing table columns: {}", e.getMessage());
         }
     }
 
@@ -223,6 +378,13 @@ public class DatabaseService {
         return null;
     }
 
+    private boolean isNestedType(String type) {
+        if (type == null) return false;
+        String lowerType = type.toLowerCase();
+        return lowerType.contains("array") || lowerType.contains("map") || 
+               lowerType.contains("row") || lowerType.contains("json");
+    }
+
     private String guessDbType(String catalogName) {
         if (catalogName == null) return "unknown";
 
@@ -242,7 +404,30 @@ public class DatabaseService {
     }
 
     public List<Database> getAllDatabases() {
-        return new ArrayList<>(databases.values());
+        List<Database> allDatabases = new ArrayList<>(databases.values());
+        
+        // Log database summary for debugging
+        for (Database db : allDatabases) {
+            if ("mongodb".equals(db.getType())) {
+                log.debug("MongoDB database: '{}' has {} collections, {} schemas", 
+                         db.getId(), db.getCollections().size(), db.getSchemas().size());
+                db.getCollections().forEach(col -> 
+                    log.debug("  Collection: '{}' with {} fields", col.getName(), col.getFields().size())
+                );
+                // MongoDB should have 0 schemas
+                if (!db.getSchemas().isEmpty()) {
+                    log.warn("MongoDB database '{}' incorrectly has {} schemas!", db.getId(), db.getSchemas().size());
+                }
+            } else {
+                log.debug("Relational database: '{}' has {} schemas, {} collections", 
+                         db.getId(), db.getSchemas().size(), db.getCollections().size());
+                db.getSchemas().forEach(schema -> 
+                    log.debug("  Schema: '{}' with {} tables", schema.getName(), schema.getTables().size())
+                );
+            }
+        }
+        
+        return allDatabases;
     }
 
     public Database getDatabaseById(String id) {
