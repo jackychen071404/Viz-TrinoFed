@@ -7,7 +7,8 @@ Backend service for parsing and processing Trino query events from Kafka.
 - **Kafka Consumer**: Consumes Trino query events from Kafka topics
 - **JSON Parsing**: Parses query events using Jackson
 - **Query Tree Reconstruction**: Builds hierarchical query trees from events
-- **REST API**: Provides endpoints for frontend to fetch query data
+- **Database Discovery**: Automatic discovery and tracking of database catalogs, schemas, and tables
+- **REST API**: Comprehensive endpoints for query and database metadata
 - **WebSocket Support**: Real-time updates via WebSocket connections
 - **CORS Enabled**: Configured for frontend at localhost:5173
 
@@ -36,9 +37,15 @@ Edit `src/main/resources/application.yml` to match your Kafka configuration:
 spring:
   kafka:
     bootstrap-servers: localhost:9092  # Your Kafka broker
+    consumer:
+      group-id: trino-viz-consumer
+
 trino:
   kafka:
     topic: trino-query-events  # Your Kafka topic name
+
+server:
+  port: 8080
 ```
 
 ### 2. Build the Project
@@ -64,9 +71,15 @@ The application will start on `http://localhost:8080`
 
 ### REST API
 
+**Query Endpoints:**
 - `GET /api/queries` - Get all query trees
 - `GET /api/queries/{queryId}` - Get specific query tree by ID
 - `GET /api/queries/ids` - Get all query IDs
+
+**Database Endpoints:**
+- `GET /api/databases` - Get all discovered database catalogs
+- `GET /api/databases/{id}` - Get specific database by ID
+- `GET /api/databases/{id}/schemas` - Get schemas in a database
 
 ### WebSocket
 
@@ -81,18 +94,23 @@ backend/
 ├── src/main/java/com/trinofed/parser/
 │   ├── config/           # Configuration classes
 │   │   ├── KafkaConsumerConfig.java
-│   │   ├── WebSocketConfig.java
-│   │   └── CorsConfig.java
+│   │   └── WebSocketConfig.java
 │   ├── consumer/         # Kafka consumers
 │   │   └── TrinoEventConsumer.java
 │   ├── controller/       # REST controllers
-│   │   └── QueryController.java
+│   │   ├── QueryController.java
+│   │   ├── DatabaseController.java
+│   │   └── DatabaseOperationsController.java
 │   ├── model/            # Data models
 │   │   ├── QueryEvent.java
 │   │   ├── QueryTree.java
-│   │   └── QueryTreeNode.java
+│   │   ├── QueryTreeNode.java
+│   │   ├── TrinoEventWrapper.java
+│   │   └── Database.java
 │   ├── service/          # Business logic
-│   │   └── QueryEventService.java
+│   │   ├── QueryEventService.java
+│   │   ├── DatabaseService.java
+│   │   └── DatabaseCatalogService.java
 │   └── TrinoKafkaParserApplication.java
 └── src/main/resources/
     └── application.yml   # Application configuration
@@ -126,9 +144,9 @@ This will start Kafka and Trino with the event listener configured.
 
 ### Adapting to Your Trino Events
 
-The current implementation provides a basic structure for parsing Trino events. You'll need to:
+The current implementation provides a structure for parsing Trino events. The `TrinoEventWrapper` class handles the nested structure from Trino's Kafka event listener. You may need to:
 
-1. Update `QueryEvent.java` fields to match your actual Trino event structure
+1. Update event parsing logic in `TrinoEventWrapper.toQueryEvent()` based on your event structure
 2. Modify `QueryEventService.buildTreeFromEvents()` to correctly parse your event hierarchy
 3. Adjust the tree construction logic based on your Trino stage and operator statistics
 
@@ -157,3 +175,6 @@ docker ps  # Check if Kafka container is running
 
 ### Lombok Not Working
 Make sure annotation processing is enabled in IntelliJ IDEA settings.
+
+### CORS Issues
+The API is configured to accept requests from `http://localhost:5173`. Update the `@CrossOrigin` annotations in controllers for different frontend URLs.

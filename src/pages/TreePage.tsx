@@ -11,16 +11,20 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import { Position } from '@xyflow/react';
 import DirectedEdge from '../components/DirectedEdge';
 import { QueryRFNode, QueryNodeData } from '../components/Node';
+import DatabaseNode from '../components/DatabaseNode';
 import QueryPlanPanel from '../components/QueryPlanPanel';
 import QueryMetricsPanel from '../components/QueryMetricsPanel';
 import { apiService } from '../services/api.service';
 import { QueryTree, QueryTreeNode } from '../types/api.types';
+import { Database } from '../types/database.types';
 
 const elk = new ELK();
 const NODE_W = 300;
 const NODE_H = 160;
+const DB_NODE_W = 350;
+const DB_NODE_H = 200;
 const directedEdgeTypes = { directed: DirectedEdge };
-const nodeTypes = { queryNode: QueryRFNode };
+const nodeTypes = { queryNode: QueryRFNode, databaseNode: DatabaseNode };
 const proOptions: ProOptions = { hideAttribution: true };
 
 // Map state to status
@@ -170,12 +174,24 @@ function dagreLayoutLR(nodes: Node[], edges: Edge[]) {
 }
 
 // Convert QueryNodeData tree to ReactFlow nodes and edges
-function toReactFlow(nodes: QueryNodeData[]) {
-  const rfNodes: Node<{ node: QueryNodeData }>[] = [];
+function toReactFlow(nodes: QueryNodeData[], databases: Database[]) {
+  const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
   const seen = new Set<string>();
 
-  // Gather all nodes (top-level + children + next) exactly once
+  // Add database nodes
+  databases.forEach((db, index) => {
+    rfNodes.push({
+      id: `db_${db.id}`,
+      type: 'databaseNode',
+      position: { x: -500, y: index * (DB_NODE_H + 50) },
+      data: { ...db, label: db.name },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+  });
+
+  // Gather all query nodes (top-level + children + next) exactly once
   const addNode = (n: QueryNodeData) => {
     if (seen.has(n.id)) return;
     seen.add(n.id);
@@ -192,6 +208,35 @@ function toReactFlow(nodes: QueryNodeData[]) {
   };
 
   nodes.forEach(addNode);
+
+  // Connect databases to query nodes - fix to connect to left side
+  const queryNodes = rfNodes.filter(n => n.type === 'queryNode');
+  const firstQueryNode = queryNodes[0];
+  
+  if (firstQueryNode) {
+    databases.forEach(db => {
+      // Connect database right handle to query node left handle
+      rfEdges.push({
+        id: `db_${db.id}__to__${firstQueryNode.id}`,
+        source: `db_${db.id}`,
+        sourceHandle: 'right', // Use right handle from database
+        target: firstQueryNode.id,
+        targetHandle: 'in', // Use left handle on query node
+        type: 'directed',
+        style: { 
+          stroke: '#6c757d', 
+          strokeWidth: 2, 
+          strokeDasharray: '5,5' 
+        },
+        markerEnd: { 
+          type: MarkerType.ArrowClosed, 
+          color: '#6c757d', 
+          width: 16, 
+          height: 16 
+        },
+      });
+    });
+  }
 
   // Child edges: parent -> child (top→bottom handles)
   const addChildEdges = (n: QueryNodeData) => {
@@ -227,31 +272,41 @@ function toReactFlow(nodes: QueryNodeData[]) {
   };
   nodes.forEach(addChildEdges);
 
-  // Sanity check
-  const ids = new Set(rfNodes.map(n => n.id));
-  rfEdges.forEach(e => {
-    if (!ids.has(e.source) || !ids.has(e.target)) {
-      console.warn('Dangling edge', e);
-    }
-  });
-
-  // Layout with dagre
-  dagreLayoutLR(rfNodes, rfEdges);
+  // Layout with dagre for query nodes only
+  const queryNodesForLayout = rfNodes.filter(n => n.type === 'queryNode');
+  const queryEdges = rfEdges.filter(e => 
+    queryNodesForLayout.some(n => n.id === e.source) && 
+    queryNodesForLayout.some(n => n.id === e.target)
+  );
+  dagreLayoutLR(queryNodesForLayout, queryEdges);
 
   return { nodes: rfNodes, edges: rfEdges };
 }
 
 const TreePage: React.FC = () => {
-  const [nodes, setNodes] = useState<Node<{ node: QueryNodeData }>[]>([]);
+  const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentQuery, setCurrentQuery] = useState<QueryTree | null>(null);
 
   useEffect(() => {
-    const loadLatestQuery = async () => {
+    const loadData = async () => {
       try {
-        const queries = await apiService.getAllQueries();
+        // Load both queries and databases
+        const [allQueries, databases] = await Promise.all([
+          apiService.getAllQueries(),
+          apiService.getDatabases()
+        ]);
+        
+        // Filter out system queries
+        const queries = allQueries.filter(query => 
+          query.user && 
+          query.user !== 'system' && 
+          !query.user.startsWith('$') &&
+          query.queryId &&
+          !query.queryId.includes('system')
+        );
         
         if (queries.length > 0) {
           const latest = queries[queries.length - 1];
@@ -276,8 +331,8 @@ const TreePage: React.FC = () => {
             return;
           }
             
-          // Generate React Flow nodes and edges
-          const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize);
+          // Generate React Flow nodes and edges with databases
+          const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize, databases);
           
           // Apply ELK layout only for complex trees (event timelines already have dagre layout)
           if (isEventTimeline) {
@@ -286,28 +341,40 @@ const TreePage: React.FC = () => {
             setEdges(rfEdges);
           } else {
             // Apply ELK layout for complex tree structures
-            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(rfNodes, rfEdges);
-            setNodes(laidOut);
-            setEdges(laidEdges);
+            const queryNodes = rfNodes.filter(n => n.type === 'queryNode') as Node<{ node: QueryNodeData }>[];
+            const queryEdges = rfEdges.filter(e => 
+              queryNodes.some(n => n.id === e.source) && 
+              queryNodes.some(n => n.id === e.target)
+            );
+            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(queryNodes, queryEdges);
+            
+            // Combine laid out query nodes with database nodes and all edges
+            const dbNodes = rfNodes.filter(n => n.type === 'databaseNode');
+            const allEdges = [...laidEdges, ...rfEdges.filter(e => 
+              !queryEdges.some(qe => qe.id === e.id)
+            )];
+            
+            setNodes([...laidOut, ...dbNodes]);
+            setEdges(allEdges);
           }
         } else {
-          setError('No queries found. Run a query in Trino to see visualization.');
+          setError('No user queries found. Run a query in Trino to see visualization.');
         }
       } catch (err) {
-        console.error('Failed to load queries:', err);
+        console.error('Failed to load data:', err);
         setError('Failed to connect to backend. Make sure backend is running on http://localhost:8080');
       } finally {
         setLoading(false);
       }
     };
 
-    loadLatestQuery();
-    const interval = setInterval(loadLatestQuery, 2000);
+    loadData();
+    const interval = setInterval(loadData, 2000);
     return () => clearInterval(interval);
   }, []);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns) as Node<{ node: QueryNodeData }>[]),
+    (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns)),
     []
   );
 
@@ -317,7 +384,7 @@ const TreePage: React.FC = () => {
   );
 
   const onInit = useCallback(
-    (rfi: ReactFlowInstance<Node<{ node: QueryNodeData }>, Edge>) => {
+    (rfi: ReactFlowInstance) => {
       rfi.fitView({ padding: 0.1 });
     },
     []
@@ -357,7 +424,7 @@ const TreePage: React.FC = () => {
           minZoom: 0.5,
         }}
         proOptions={proOptions}
-        nodeExtent={[[ -200, -200 ], [ 20000, 12000 ]]}
+        nodeExtent={[[ -800, -200 ], [ 20000, 12000 ]]}
       >
         <Background />
         <Controls />

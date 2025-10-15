@@ -103,7 +103,7 @@ const QueryNode = memo(({ data }: QueryNodeProps) => {
             backgroundColor: 'rgba(255,255,255,0.3)',
             borderRadius: '4px'
           }}>
-            📊 {data.sourceSystem}
+               {data.sourceSystem}
           </div>
         )}
       </div>
