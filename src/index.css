@@ -5,12 +5,17 @@
 
   color-scheme: light dark;
   color: #000000;
-  background-color: #242424;
+  background-color: #f0f0f0;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  background-color: #f0f0f0;
+  height: 100%;
 }
 
 a {
@@ -26,13 +31,17 @@ body {
   margin: 0;
   display: flex;
   place-items: center;
+  background-color: #f0f0f0;
   min-width: 320px;
   min-height: 100vh;
+  height: 100vh;
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 3em;
   line-height: 1.1;
+  margin: 10px;
+  font-family: 'Roboto', sans-serif;
 }
 
 button {
@@ -54,10 +63,28 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  width: 50%;
+  margin: 10px auto;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: #f0f0f0;
+  }
+  body {
+    background-color: #f0f0f0;
   }
   a:hover {
     color: #747bff;

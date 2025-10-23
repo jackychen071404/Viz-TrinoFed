@@ -1,8 +1,11 @@
+import CardList from '../components/CardList';
+import { demoCards } from '../mock-data/mock-data';
+
 export default function QueryHistory() {
   return (
     <div>
       <h1>Query History</h1>
-      <p>This is the query history page.</p>
+      <CardList cards={demoCards} />
     </div>
   );
 }
