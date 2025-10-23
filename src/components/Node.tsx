@@ -1,5 +1,8 @@
-import * as React from "react";import { Box, Chip, Typography, Divider } from "@mui/material";
+import * as React from "react";
+import { Box, Chip, Typography, Divider } from "@mui/material";
 import { Handle, Position } from "@xyflow/react";
+import Modal from './Modal';
+
 import { 
   HourglassBottom, 
   QuestionMark, 
@@ -8,7 +11,7 @@ import {
   SentimentNeutral, 
   Check,
   ContentCopy,
-  OpenInNew,
+  OpenInNew
 } from "@mui/icons-material";
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
@@ -328,7 +331,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         '&:focus-visible': { boxShadow: 3, borderColor: 'primary.main' },
       }}>
       <ContentCopy sx={{ position: 'absolute', top: 0, right: 0, padding: 1 }} />
-      <OpenInNew sx={{ position: 'absolute', top: 0, right: 40, padding: 1 }} />
+      <Modal top={0} right={40} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
           {n.title ?? n.stage}
