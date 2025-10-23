@@ -1,9 +1,8 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Modal from '@mui/material/Modal';
-import { OpenInNew } from '@mui/icons-material';
+import { OpenInNew, Close } from '@mui/icons-material';
 
 const style = {
   position: 'absolute',
@@ -33,6 +32,7 @@ export default function BasicModal(position: { top: number, right: number }) {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
+          <Close onClick={handleClose} sx={{ position: 'absolute', top: 0, right: 0, padding: 1 }} />
           <Typography id="modal-modal-title" variant="h6" component="h2">
             Text in a modal
           </Typography>
