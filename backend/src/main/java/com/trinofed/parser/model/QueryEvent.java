@@ -101,6 +101,9 @@ public class QueryEvent {
     @JsonProperty("plan")
     private String plan;
 
+    @JsonProperty("jsonPlan")
+    private String jsonPlan;
+
     @JsonProperty("errorCode")
     private String errorCode;
 

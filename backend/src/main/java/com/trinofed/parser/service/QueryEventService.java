@@ -23,11 +23,13 @@ public class QueryEventService {
     private final Map<String, Set<String>> tableQueries = new ConcurrentHashMap<>();
     private final SimpMessagingTemplate messagingTemplate;
     private final DatabaseService databaseService;
+    private final QueryPlanParser queryPlanParser;
 
     @Autowired
-    public QueryEventService(SimpMessagingTemplate messagingTemplate, DatabaseService databaseService) {
+    public QueryEventService(SimpMessagingTemplate messagingTemplate, DatabaseService databaseService, QueryPlanParser queryPlanParser) {
         this.messagingTemplate = messagingTemplate;
         this.databaseService = databaseService;
+        this.queryPlanParser = queryPlanParser;
     }
 
     public void processEvent(QueryEvent event) {
@@ -102,8 +104,51 @@ public class QueryEventService {
 
     private QueryTreeNode buildTreeFromEvents(List<QueryEvent> events) {
         // Build a hierarchical tree from events
-        // This is a simplified version - you'll need to adapt based on actual Trino event structure
+        // First, try to parse from jsonPlan if available
+        for (QueryEvent event : events) {
+            if (event.getJsonPlan() != null && !event.getJsonPlan().trim().isEmpty()) {
+                log.info("Parsing query tree from JSON plan for query: {}", event.getQueryId());
+                QueryTreeNode parsedRoot = queryPlanParser.parseJsonPlan(event.getJsonPlan());
 
+                if (parsedRoot != null) {
+                    // Enrich the parsed tree with event metadata
+                    enrichTreeWithEventData(parsedRoot, event);
+                    log.info("Successfully parsed JSON plan with operator: {}", parsedRoot.getOperatorType());
+                    return parsedRoot;
+                }
+            }
+        }
+
+        // Fallback to legacy method if no jsonPlan is available
+        log.debug("No JSON plan available, building tree from event metadata");
+        return buildTreeFromEventMetadata(events);
+    }
+
+    /**
+     * Enriches the parsed tree with additional data from QueryEvent
+     */
+    private void enrichTreeWithEventData(QueryTreeNode node, QueryEvent event) {
+        if (node == null) {
+            return;
+        }
+
+        // Set query-level metadata on root
+        node.setQueryId(event.getQueryId());
+        node.setState(event.getState());
+        node.setSourceSystem(event.getCatalog());
+
+        // Recursively enrich children
+        if (node.getChildren() != null) {
+            for (QueryTreeNode child : node.getChildren()) {
+                enrichTreeWithEventData(child, event);
+            }
+        }
+    }
+
+    /**
+     * Legacy method to build tree from event metadata when jsonPlan is not available
+     */
+    private QueryTreeNode buildTreeFromEventMetadata(List<QueryEvent> events) {
         Map<String, QueryTreeNode> nodeMap = new HashMap<>();
         QueryTreeNode root = null;
 

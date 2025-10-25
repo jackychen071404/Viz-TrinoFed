@@ -70,6 +70,9 @@ public class TrinoEventWrapper {
         @JsonProperty("plan")
         private String plan;
 
+        @JsonProperty("jsonPlan")
+        private String jsonPlan;
+
         @JsonProperty("payload")
         private String payload;
     }
@@ -319,6 +322,7 @@ public class TrinoEventWrapper {
                 .totalRows(stats != null ? stats.getTotalRows() : null)
                 .completedSplits(stats != null ? stats.getCompletedSplits() : null)
                 .plan(metadata.getPlan())
+                .jsonPlan(metadata.getJsonPlan())
                 .eventType(determineEventType(metadata.getQueryState()))
                 .catalog(primaryCatalog)
                 .schema(primarySchema)
