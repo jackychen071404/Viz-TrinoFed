@@ -1,4 +1,5 @@
 import { QueryNodeData } from "../components/Node";
+import { CardProps } from "../components/Card";
 
 export const demoNodes: QueryNodeData[] = [
     {
@@ -224,5 +225,62 @@ export const demoNodes: QueryNodeData[] = [
           durationMs: 55,
         }
       ]
+    },
+  ];
+
+  export const demoCards: CardProps[] = [
+    {
+      title: "q_8f2a",
+      description: "Query ID: q_8f2a",
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_2",
+      description: "Query ID: q_8f2a_2",
+      status: "failed",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_3",
+      description: "Query ID: q_8f2a_3",
+      status: "unknown",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_4",
+      description: "Query ID: q_8f2a_4",
+      status: "finished",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_5",
+      description: "Query ID: q_8f2a_5",
+      status: "idle",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_6",
+      description: "Query ID: q_8f2a_6",
+      status: "queued",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_7",
+      description: "Query ID: q_8f2a_7",
+      status: "finished",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_8",
+      description: "Query ID: q_8f2a_8",
+      status: "finished",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      title: "q_8f2a_9",
+      description: "Query ID: q_8f2a_9",
+      status: "finished",
+      timestamp: new Date().toISOString(),
     },
   ];

@@ -17,14 +17,14 @@ const style = {
   p: 4,
 };
 
-export default function BasicModal(position: { top: number, right: number }) {
+export default function BasicModal({ top, right }: { top: number, right: number }) {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   return (
     <div>
-      <OpenInNew onClick={handleOpen} sx={{ position: 'absolute', top: position.top, right: position.right, padding: 1 }} />
+      <OpenInNew onClick={handleOpen} sx={{ position: 'absolute', top: top, right: right, padding: 1 }} />
       <Modal
         open={open}
         onClose={handleClose}
