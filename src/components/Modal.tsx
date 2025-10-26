@@ -24,7 +24,7 @@ export default function BasicModal({ top, right }: { top: number, right: number 
 
   return (
     <div>
-      <OpenInNew onClick={handleOpen} sx={{ position: 'absolute', top: top, right: right, padding: 1 }} />
+      <OpenInNew onClick={(e) => { e.stopPropagation(); handleOpen(); }} sx={{ position: 'absolute', top: top, right: right, padding: 1 }} />
       <Modal
         open={open}
         onClose={handleClose}
