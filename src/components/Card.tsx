@@ -3,6 +3,7 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import { HourglassBottom, SentimentVeryDissatisfied, SentimentNeutral, SentimentSatisfiedAlt, Check, QuestionMark, ContentCopy } from '@mui/icons-material';
 import { Chip, Box } from '@mui/material';
+import CopyPaste from './CopyPaste';
 import Modal from './Modal';
 
 export type CardProps = {
@@ -62,7 +63,7 @@ export default function BasicCard({ title, description, status, timestamp }: Car
   return (
     <Card sx={{ minWidth: 275, backgroundColor: setStatusColor(status), position: 'relative', borderRadius: 0 }}>
       <Modal top={0} right={40} />
-      <ContentCopy sx={{ position: 'absolute', top: 0, right: 0, padding: 1 }} />
+      <CopyPaste dataToCopy={title} />
       <CardContent>
         <Box sx={{ ml: 'auto' }}><StatusChip status={status} /></Box>
         <Typography gutterBottom sx={{ color: 'text.secondary', fontSize: 14 }}>

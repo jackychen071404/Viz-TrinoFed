@@ -12,6 +12,7 @@ import {
   Check,
   ContentCopy,
 } from "@mui/icons-material";
+import CopyPaste from "./CopyPaste";
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
   switch(state) {
@@ -329,7 +330,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         bgcolor: setStatusColor(n.status), p: 1.25, boxShadow: 1,
         '&:focus-visible': { boxShadow: 3, borderColor: 'primary.main' },
       }}>
-      <ContentCopy sx={{ position: 'absolute', top: 0, right: 0, padding: 1 }} />
+      <CopyPaste dataToCopy={n.title ?? n.stage} />
       <Modal top={0} right={40} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
