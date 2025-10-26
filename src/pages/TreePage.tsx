@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow, applyNodeChanges, applyEdgeChanges,
   type NodeChange, type EdgeChange,
@@ -289,70 +290,94 @@ const TreePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentQuery, setCurrentQuery] = useState<QueryTree | null>(null);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryId = searchParams.get('queryId');
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load both queries and databases
-        const [allQueries, databases] = await Promise.all([
-          apiService.getAllQueries(),
-          apiService.getDatabases()
-        ]);
+        // Load databases
+        const databases = await apiService.getDatabases();
         
-        // Filter out system queries
-        const queries = allQueries.filter(query => 
-          query.user && 
-          query.user !== 'system' && 
-          !query.user.startsWith('$') &&
-          query.queryId &&
-          !query.queryId.includes('system')
-        );
+        let queryToDisplay: QueryTree;
         
-        if (queries.length > 0) {
-          const latest = queries[queries.length - 1];
-          setCurrentQuery(latest);
-
-          // Check if we have a complex tree structure or just simple events
-          const hasComplexTree = latest.root?.children && latest.root.children.length > 0;
+        if (queryId) {
+          // Historical mode: fetch specific query
+          queryToDisplay = await apiService.getQueryById(queryId);
+        } else {
+          // Live mode: fetch latest query
+          const allQueries = await apiService.getAllQueries();
           
-          let nodesToVisualize: QueryNodeData[];
-          let isEventTimeline = false;
+          // Filter out system queries
+          const queries = allQueries.filter(query => 
+            query.user && 
+            query.user !== 'system' && 
+            !query.user.startsWith('$') &&
+            query.queryId &&
+            !query.queryId.includes('system')
+          );
           
-          if (hasComplexTree && latest.root) {
-            // Convert backend data to QueryNodeData format for complex trees
-            nodesToVisualize = [convertToQueryNodeData(latest.root)];
-            isEventTimeline = false;
-          } else if (latest.events && latest.events.length > 0) {
-            // Create event timeline for simple queries
-            nodesToVisualize = createEventTimeline(latest);
-            isEventTimeline = true;
-          } else {
-            setError('No visualization data available');
+          if (queries.length === 0) {
+            setError('No user queries found. Run a query in Trino to see visualization.');
+            setLoading(false);
             return;
           }
-            
-          // Generate React Flow nodes and edges with databases
-          const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize, databases);
           
-          // Use dagre layout for all trees (ELK has issues with port references)
-          // Apply dagre layout to all nodes
-          setNodes(rfNodes);
-          setEdges(rfEdges);
-        } else {
-          setError('No user queries found. Run a query in Trino to see visualization.');
+          queryToDisplay = queries[queries.length - 1];
         }
+        
+        // Always update current query, even during subsequent updates
+        setCurrentQuery(queryToDisplay);
+
+        // Check if we have a complex tree structure or just simple events
+        const hasComplexTree = queryToDisplay.root?.children && queryToDisplay.root.children.length > 0;
+        
+        let nodesToVisualize: QueryNodeData[];
+        let isEventTimeline = false;
+        
+        if (hasComplexTree && queryToDisplay.root) {
+          // Convert backend data to QueryNodeData format for complex trees
+          nodesToVisualize = [convertToQueryNodeData(queryToDisplay.root)];
+          isEventTimeline = false;
+        } else if (queryToDisplay.events && queryToDisplay.events.length > 0) {
+          // Create event timeline for simple queries
+          nodesToVisualize = createEventTimeline(queryToDisplay);
+          isEventTimeline = true;
+        } else {
+          setError('No visualization data available');
+          setLoading(false);
+          return;
+        }
+          
+        // Generate React Flow nodes and edges with databases
+        const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize, databases);
+        
+        // Use dagre layout for all trees (ELK has issues with port references)
+        // Apply dagre layout to all nodes
+        setNodes(rfNodes);
+        setEdges(rfEdges);
+        setError(null);
+        setLoading(false);
       } catch (err) {
         console.error('Failed to load data:', err);
         setError('Failed to connect to backend. Make sure backend is running on http://localhost:8080');
-      } finally {
         setLoading(false);
       }
     };
 
     loadData();
-    const interval = setInterval(loadData, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    // Only set up auto-refresh if not viewing a historical query
+    let interval: NodeJS.Timeout | null = null;
+    if (!queryId) {
+      interval = setInterval(loadData, 2000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [queryId]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes(ns => applyNodeChanges(changes, ns)),
@@ -371,16 +396,87 @@ const TreePage: React.FC = () => {
     []
   );
 
-  if (loading) {
+  const handleBackToLatest = () => {
+    navigate('/');
+  };
+
+  // Show initial loading screen only on first load
+  if (loading && !currentQuery) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '18px' }}>Loading queries...</div>;
   }
 
-  if (error) {
+  // Show error only if there's no query data to display
+  if (error && !currentQuery) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'red', fontSize: '16px', padding: '20px', textAlign: 'center' }}>{error}</div>;
   }
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {/* Historical Query Banner */}
+      {queryId && currentQuery && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: '#fff3cd',
+          borderBottom: '2px solid #ffc107',
+          padding: '12px 20px',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}>
+              <span style={{ color: '#856404' }}>📋 Historical Query:</span>
+              <code style={{ 
+                backgroundColor: '#fff',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                border: '1px solid #ffc107',
+                fontSize: '13px',
+              }}>
+                {currentQuery.queryId}
+              </code>
+            </div>
+            <div style={{ fontSize: '13px', color: '#856404' }}>
+              🕒 {new Date(currentQuery.startTime).toLocaleString()}
+            </div>
+          </div>
+          <button
+            onClick={handleBackToLatest}
+            style={{
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1565c0';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#1976d2';
+            }}
+          >
+            ⬅️ Back to Latest
+          </button>
+        </div>
+      )}
+      
+      {/* Always show panels if we have query data */}
       {currentQuery && (
         <>
           <UnifiedMetricsPanel query={currentQuery} />
