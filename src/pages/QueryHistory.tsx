@@ -1,6 +1,9 @@
+import CardList from '../components/CardList';
+import { demoCards } from '../mock-data/mock-data';
 import { useEffect, useState } from 'react';
 import { apiService } from '../services/api.service';
 import { QueryTree } from '../types/api.types';
+
 
 export default function QueryHistory() {
   const [queries, setQueries] = useState<QueryTree[]>([]);
@@ -28,6 +31,7 @@ export default function QueryHistory() {
   return (
     <div style={{ padding: '20px' }}>
       <h1>Query History</h1>
+      <CardList cards={demoCards} />
       {queries.length === 0 ? (
         <p>No queries found.</p>
       ) : (
@@ -54,6 +58,7 @@ export default function QueryHistory() {
           ))}
         </div>
       )}
+
     </div>
   );
 }

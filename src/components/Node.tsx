@@ -1,5 +1,8 @@
-import * as React from "react";import { Box, Chip, Typography, Divider } from "@mui/material";
+import * as React from "react";
+import { Box, Chip, Typography, Divider } from "@mui/material";
 import { Handle, Position } from "@xyflow/react";
+import Modal from './Modal';
+
 import { 
   HourglassBottom, 
   QuestionMark, 
@@ -8,8 +11,8 @@ import {
   SentimentNeutral, 
   Check,
   ContentCopy,
-  OpenInNew,
 } from "@mui/icons-material";
+import CopyPaste from "./CopyPaste";
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
   switch(state) {
@@ -337,10 +340,11 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         '&:focus-visible': { boxShadow: 6, borderColor: 'primary.dark' },
         '&:hover': { boxShadow: 6, borderColor: 'primary.main' },
       }}>
-      <ContentCopy sx={{ position: 'absolute', top: 8, right: 8, padding: 0.5, cursor: 'pointer', fontSize: 20, color: '#666' }} />
-      <OpenInNew sx={{ position: 'absolute', top: 8, right: 42, padding: 0.5, cursor: 'pointer', fontSize: 20, color: '#666' }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#1a1a1a' }}>
+      <CopyPaste dataToCopy={n.title ?? n.stage} />
+      <Modal top={0} right={40} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+
           {n.title ?? n.stage}
         </Typography>
         <Box sx={{ ml: 'auto' }}>{ StatusChip({ status: n.status })}</Box>
