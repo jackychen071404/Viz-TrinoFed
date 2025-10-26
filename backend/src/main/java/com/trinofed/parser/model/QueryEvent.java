@@ -121,4 +121,8 @@ public class QueryEvent {
 
     @JsonProperty("metadata")
     private Map<String, Object> metadata;
+
+    // Detailed statistics from Kafka event
+    @JsonProperty("statistics")
+    private Map<String, Object> statistics;
 }

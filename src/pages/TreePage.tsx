@@ -13,7 +13,7 @@ import DirectedEdge from '../components/DirectedEdge';
 import { QueryRFNode, QueryNodeData } from '../components/Node';
 import DatabaseNode from '../components/DatabaseNode';
 import QueryPlanPanel from '../components/QueryPlanPanel';
-import QueryMetricsPanel from '../components/QueryMetricsPanel';
+import UnifiedMetricsPanel from '../components/UnifiedMetricsPanel';
 import { apiService } from '../services/api.service';
 import { QueryTree, QueryTreeNode } from '../types/api.types';
 import { Database } from '../types/database.types';
@@ -334,29 +334,10 @@ const TreePage: React.FC = () => {
           // Generate React Flow nodes and edges with databases
           const { nodes: rfNodes, edges: rfEdges } = toReactFlow(nodesToVisualize, databases);
           
-          // Apply ELK layout only for complex trees (event timelines already have dagre layout)
-          if (isEventTimeline) {
-            // Event timelines already have good layout from dagre
-            setNodes(rfNodes);
-            setEdges(rfEdges);
-          } else {
-            // Apply ELK layout for complex tree structures
-            const queryNodes = rfNodes.filter(n => n.type === 'queryNode') as Node<{ node: QueryNodeData }>[];
-            const queryEdges = rfEdges.filter(e => 
-              queryNodes.some(n => n.id === e.source) && 
-              queryNodes.some(n => n.id === e.target)
-            );
-            const { nodes: laidOut, edges: laidEdges } = await layoutWithElk(queryNodes, queryEdges);
-            
-            // Combine laid out query nodes with database nodes and all edges
-            const dbNodes = rfNodes.filter(n => n.type === 'databaseNode');
-            const allEdges = [...laidEdges, ...rfEdges.filter(e => 
-              !queryEdges.some(qe => qe.id === e.id)
-            )];
-            
-            setNodes([...laidOut, ...dbNodes]);
-            setEdges(allEdges);
-          }
+          // Use dagre layout for all trees (ELK has issues with port references)
+          // Apply dagre layout to all nodes
+          setNodes(rfNodes);
+          setEdges(rfEdges);
         } else {
           setError('No user queries found. Run a query in Trino to see visualization.');
         }
@@ -402,8 +383,8 @@ const TreePage: React.FC = () => {
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       {currentQuery && (
         <>
-          <QueryMetricsPanel query={currentQuery} />
-          <QueryPlanPanel 
+          <UnifiedMetricsPanel query={currentQuery} />
+          <QueryPlanPanel
             events={currentQuery.events || []}
             plan={currentQuery.events?.find(e => e.plan)?.plan}
           />
