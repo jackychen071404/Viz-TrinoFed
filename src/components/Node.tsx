@@ -10,8 +10,7 @@ import {
   SentimentVeryDissatisfied, 
   SentimentNeutral, 
   Check,
-  ContentCopy,
-  OpenInNew
+  ContentCopy
 } from "@mui/icons-material";
 
 export const setStatusColor = (state: QueryNodeData['status']) => {
