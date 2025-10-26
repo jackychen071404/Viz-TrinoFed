@@ -4,7 +4,8 @@ import { ContentCopy } from '@mui/icons-material';
 export default function CopyPaste ({ dataToCopy }: { dataToCopy: string }) {
   const [copied, setCopied] = React.useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(dataToCopy).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
