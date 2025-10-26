@@ -42,8 +42,9 @@ public class TrinoEventWrapper {
         @JsonProperty("endTime")
         private String endTime;
 
+        // Capture all statistics fields as a flexible map
         @JsonProperty("statistics")
-        private QueryStatistics statistics;
+        private Map<String, Object> statistics;
 
         @JsonProperty("ioMetadata")
         private IoMetadata ioMetadata;
@@ -69,6 +70,9 @@ public class TrinoEventWrapper {
 
         @JsonProperty("plan")
         private String plan;
+
+        @JsonProperty("jsonPlan")
+        private String jsonPlan;
 
         @JsonProperty("payload")
         private String payload;
@@ -230,7 +234,7 @@ public class TrinoEventWrapper {
         }
 
         QueryMetadata metadata = eventPayload.getMetadata();
-        QueryStatistics stats = eventPayload.getStatistics();
+        Map<String, Object> statsMap = eventPayload.getStatistics();
         QueryContext ctx = eventPayload.getContext();
         IoMetadata ioMeta = eventPayload.getIoMetadata();
 
@@ -311,14 +315,15 @@ public class TrinoEventWrapper {
                 .timestamp(timestamp)
                 .createTime(eventPayload.getCreateTime())
                 .endTime(eventPayload.getEndTime())
-                .cpuTimeMs(stats != null && stats.getCpuTime() != null ? parseDuration(stats.getCpuTime()) : null)
-                .wallTimeMs(stats != null && stats.getWallTime() != null ? parseDuration(stats.getWallTime()) : null)
-                .queuedTimeMs(stats != null && stats.getQueuedTime() != null ? parseDuration(stats.getQueuedTime()) : null)
-                .peakMemoryBytes(stats != null ? stats.getPeakMemoryBytes() : null)
-                .totalBytes(stats != null ? stats.getTotalBytes() : null)
-                .totalRows(stats != null ? stats.getTotalRows() : null)
-                .completedSplits(stats != null ? stats.getCompletedSplits() : null)
+                .cpuTimeMs(extractDuration(statsMap, "cpuTime"))
+                .wallTimeMs(extractDuration(statsMap, "wallTime"))
+                .queuedTimeMs(extractDuration(statsMap, "queuedTime"))
+                .peakMemoryBytes(extractLong(statsMap, "peakMemoryBytes"))
+                .totalBytes(extractLong(statsMap, "totalBytes"))
+                .totalRows(extractLong(statsMap, "totalRows"))
+                .completedSplits(extractInteger(statsMap, "completedSplits"))
                 .plan(metadata.getPlan())
+                .jsonPlan(metadata.getJsonPlan())
                 .eventType(determineEventType(metadata.getQueryState()))
                 .catalog(primaryCatalog)
                 .schema(primarySchema)
@@ -328,6 +333,7 @@ public class TrinoEventWrapper {
                 .tables(tables)
                 .inputs(inputsMap)
                 .ioMetadata(ioMeta)
+                .statistics(statsMap)  // Store complete statistics
                 .build();
     }
 
@@ -348,6 +354,51 @@ public class TrinoEventWrapper {
             }
         } catch (NumberFormatException e) {
             return null;
+        }
+        return null;
+    }
+
+    /**
+     * Extract duration from statistics map
+     */
+    private Long extractDuration(Map<String, Object> stats, String key) {
+        if (stats == null || !stats.containsKey(key)) {
+            return null;
+        }
+        Object value = stats.get(key);
+        if (value instanceof String) {
+            return parseDuration((String) value);
+        } else if (value instanceof Number) {
+            // If it's already a number, assume it's in seconds and convert to ms
+            return (long) (((Number) value).doubleValue() * 1000);
+        }
+        return null;
+    }
+
+    /**
+     * Extract Long value from statistics map
+     */
+    private Long extractLong(Map<String, Object> stats, String key) {
+        if (stats == null || !stats.containsKey(key)) {
+            return null;
+        }
+        Object value = stats.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return null;
+    }
+
+    /**
+     * Extract Integer value from statistics map
+     */
+    private Integer extractInteger(Map<String, Object> stats, String key) {
+        if (stats == null || !stats.containsKey(key)) {
+            return null;
+        }
+        Object value = stats.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
         }
         return null;
     }
