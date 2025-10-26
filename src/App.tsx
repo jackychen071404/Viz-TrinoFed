@@ -19,10 +19,15 @@ export default function App() {
         <AppBar sx={{backgroundColor: 'white', color: 'black'}} position="static" elevation={1}>
           <Toolbar sx={{justifyContent: 'flex-end', gap: 2}}>
             <Stack direction="row" spacing={2}>
-              {links
-              .filter((link) => link.to !== pathname)
-              .map((link) => (
-                <NavButton key={link.to} to={link.to} external>
+              {links.map((link) => (
+                <NavButton 
+                  key={link.to} 
+                  to={link.to}
+                  sx={{
+                    fontWeight: pathname === link.to || (pathname === '/' && link.to === '/') ? 'bold' : 'normal',
+                    textDecoration: pathname === link.to ? 'underline' : 'none'
+                  }}
+                >
                   {link.label}
                 </NavButton>
               ))}
