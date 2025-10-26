@@ -40,7 +40,8 @@ body {
 h1 {
   font-size: 3em;
   line-height: 1.1;
-  margin: 10px;
+  margin: 100px auto;
+  text-align: center;
   font-family: 'Roboto', sans-serif;
 }
 
@@ -72,9 +73,20 @@ ul {
 li {
   width: 50%;
   margin: 10px auto;
-  background-color: #ffffff;
+  background-color: inherit;
   color: #000000;
-  font-size: 16px;
+  font-size: 1.5em;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+}
+
+p {
+  width: 50%;
+  margin: 10px auto;
+  background-color: inherit;
+  color: #000000;
+  font-size: 1.5em;
+  font-family: 'Roboto', sans-serif;
   font-weight: 500;
 }
 
