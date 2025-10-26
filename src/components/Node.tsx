@@ -9,8 +9,7 @@ import {
   SentimentSatisfiedAlt, 
   SentimentVeryDissatisfied, 
   SentimentNeutral, 
-  Check,
-  ContentCopy,
+  Check
 } from "@mui/icons-material";
 import CopyPaste from "./CopyPaste";
 
