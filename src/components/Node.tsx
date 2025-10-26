@@ -9,8 +9,7 @@ import {
   SentimentSatisfiedAlt, 
   SentimentVeryDissatisfied, 
   SentimentNeutral, 
-  Check,
-  ContentCopy
+  Check
 } from "@mui/icons-material";
 import CopyPaste from "./CopyPaste";
 
@@ -171,13 +170,48 @@ function MetricList({ metrics }: { metrics?: QueryMetric[] }) {
 
 function StatusChip({ status }: { status?: QueryNodeData["status"] }) {
   if (!status) return null;
-  const color =
-    status === "ok" ? "success" :
-    status === "idle" ? "warning" :
-    status === "failed" ? "error" :
-    "default";
+  
+  const getChipColor = (status: QueryNodeData["status"]) => {
+    switch(status) {
+      case 'queued':
+        return { bgcolor: '#e3f2fd', color: '#1976d2' }; // Light blue background, dark blue text
+      case 'failed':
+        return { bgcolor: '#ffcdd2', color: '#d32f2f' }; // Light red background, dark red text
+      case 'idle':
+        return { bgcolor: '#fff9c4', color: '#f57c00' }; // Light yellow background, dark orange text
+      case 'ok':
+        return { bgcolor: '#c8e6c9', color: '#388e3c' }; // Light green background, dark green text
+      case 'finished':
+        return { bgcolor: '#bbdefb', color: '#1976d2' }; // Light blue background, dark blue text
+      case 'unknown':
+        return { bgcolor: '#f5f5f5', color: '#616161' }; // Light gray background, dark gray text
+      default:
+        return { bgcolor: '#f5f5f5', color: '#616161' };
+    }
+  };
+  
+  const chipColors = getChipColor(status);
   const label = status.charAt(0).toUpperCase() + status.slice(1);
-  return <Chip size="small" color={color as any} label={label} sx={{ fontWeight: 600, position: 'absolute', bottom: 10, right: 10, padding:0 }} />;
+  
+  return (
+    <Chip 
+      size="small" 
+      label={label} 
+      sx={{ 
+        fontWeight: 600, 
+        position: 'absolute', 
+        bottom: 10, 
+        right: 10, 
+        padding: 0,
+        backgroundColor: chipColors.bgcolor,
+        color: chipColors.color,
+        '& .MuiChip-label': {
+          color: chipColors.color,
+          fontWeight: 600
+        }
+      }} 
+    />
+  );
 }
 
 export function QueryNode({
@@ -334,7 +368,7 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
         borderRadius: 2, 
         border: 3, 
         borderColor: '#1976d2',
-        bgcolor: 'white',
+        bgcolor: setStatusColor(n.status),
         p: 2, 
         boxShadow: 4,
         '&:focus-visible': { boxShadow: 6, borderColor: 'primary.dark' },
@@ -344,9 +378,9 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
       <Modal top={0} right={40} />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-
           {n.title ?? n.stage}
         </Typography>
+        {setStatusIcon(n.status)}
         <Box sx={{ ml: 'auto' }}>{ StatusChip({ status: n.status })}</Box>
       </Box>
       {n.connector && (
@@ -387,7 +421,9 @@ export function QueryRFNode({ data }: { data: { node: QueryNodeData } }) {
                   {metric.label}:
                 </Box>
                 <Box component="dd" sx={{ m: 0, fontSize: '0.85rem', color: '#1a1a1a', fontWeight: 600 }}>
-                  {metric.kind === 'text' ? metric.value : String(metric.value)}
+                  {metric.kind === 'text' ? metric.value : 
+                   metric.kind === 'time' ? (metric.display ?? new Date(metric.datetime).toLocaleString()) :
+                   String(metric.value)}
                 </Box>
               </React.Fragment>
             ))}
