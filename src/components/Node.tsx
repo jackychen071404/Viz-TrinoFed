@@ -10,7 +10,7 @@ import {
   SentimentVeryDissatisfied, 
   SentimentNeutral, 
   Check,
-  ContentCopy,
+  ContentCopy
 } from "@mui/icons-material";
 import CopyPaste from "./CopyPaste";
 
