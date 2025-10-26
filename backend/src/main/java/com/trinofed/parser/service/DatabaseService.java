@@ -123,16 +123,12 @@ public class DatabaseService {
         // - "table" represents the collection name (like "products", "reviews")
         // We should ONLY create collections for MongoDB, never schemas
         
-        String collectionName = null;
-        
         // Priority order for determining collection name:
         // 1. tableName is the collection
         // 2. If no tableName but schemaName exists and isn't a system db, use schemaName as collection
-        if (tableName != null && !tableName.isEmpty()) {
-            collectionName = tableName;
-        } else if (schemaName != null && !schemaName.isEmpty() && !isMongoSystemDatabase(schemaName)) {
-            collectionName = schemaName;
-        }
+        final String collectionName = (tableName != null && !tableName.isEmpty()) ? tableName
+                : (schemaName != null && !schemaName.isEmpty() && !isMongoSystemDatabase(schemaName)) ? schemaName
+                : null;
         
         log.debug("MongoDB processing - schema: '{}', table: '{}', resolved collection: '{}'", 
                  schemaName, tableName, collectionName);
