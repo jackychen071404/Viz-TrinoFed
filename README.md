@@ -10,6 +10,29 @@
 | Jared Shi | jaredshi@bu.edu |
 | Jacky Chen | jchen07@bu.edu |
 
+## Table of Contents
+1. [Vision and Goals Of The Project](#vision-and-goals-of-the-project)
+   1. [Goal](#goal)
+   2. [Features](#features)
+2. [Users / Personas of the Project](#users--personas-of-the-project)
+   1. [Primary Personas](#primary-personas)
+   2. [Additional Potential Users](#additional-potential-users)
+3. [Scope and Features Of The Project](#scope-and-features-of-the-project)
+4. [Solution Concept](#solution-concept)
+   1. [Current Architecture](#current-architecture)
+   2. [Global Architectural Structure Of the Project](#global-architectural-structure-of-the-project)
+   3. [Design Implications and Discussion](#design-implications-and-discussion)
+5. [Acceptance Criteria](#acceptance-criteria)
+   1. [Minimum Acceptance Criteria](#minimum-acceptance-criteria)
+   2. [Stretch Goals](#stretch-goals)
+6. [Release Planning](#release-planning)
+   1. [Sprint 1](#sprint-1)
+   2. [Sprint 2](#sprint-2)
+   3. [Sprint 3](#sprint-3)
+   4. [Sprint 4](#sprint-4)
+   5. [Sprint 5](#sprint-5)
+7. [Sprint Demos](#sprint-demos)
+
 ## 1.   Vision and Goals Of The Project:
 
 ### Goal
