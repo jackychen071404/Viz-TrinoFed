@@ -11,13 +11,13 @@
 | Jacky Chen | jchen07@bu.edu |
 
 ## Table of Contents
-1. [Vision and Goals Of The Project](#1-vision-and-goals-of-the-project:)
+1. [Vision and Goals Of The Project](#1-vision-and-goals-of-the-project)
    1. [Goal](#goal)
    2. [Features](#features)
 2. [Users / Personas of the Project](#users--personas-of-the-project)
    1. [Primary Personas](#primary-personas)
    2. [Additional Potential Users](#additional-potential-users)
-3. [Scope and Features Of The Project](#scope-and-features-of-the-project:)
+3. [Scope and Features Of The Project](#scope-and-features-of-the-project)
 4. [Solution Concept](#solution-concept)
    1. [Current Architecture](#current-architecture)
    2. [Global Architectural Structure Of the Project](#global-architectural-structure-of-the-project)
@@ -28,7 +28,7 @@
 6. [Sprints](#release-planning)
 7. [Sprint Demos](#sprint-demos)
 
-## 1.   Vision and Goals Of The Project:
+## 1.   Vision and Goals Of The Project
 
 ### Goal
 This project aims to enhance the observability of Trino as a federated query engine by providing clear visibility into the full lifecycle of a query’s execution. While Trino allows users to query across differing data sources as if they were a single system, the lack of transparency into how queries are parsed, scheduled, and executed poses challenges for performance monitoring and troubleshooting. The current UI is complex and technical, representing a significant barrier to user understanding. By developing a visualization of query trees with extensive time-spent metrics, this project will enable users to better understand query behavior, identify performance bottlenecks, and correct errors, ultimately improving user and developer productivity with Trino. 
@@ -75,7 +75,7 @@ This project is designed for people who work with distributed data systems and n
 **In short:**  
 Anyone who needs to understand, debug, and optimize queries that span multiple data sources in Trino will benefit from this tool’s ability to make the entire query lifetime visible and comprehensible.
 
-## 3.   Scope and Features Of The Project:
+## 3.   Scope and Features Of The Project
 ### 1. User-Friendly Visualization of Trino Query Trees
 - Develop an interactive web UI that allows users to explore how queries are executed in Trino.  
 - Replace Trino’s verbose `EXPLAIN ANALYZE` output with a simplified, user-friendly tree view.  
