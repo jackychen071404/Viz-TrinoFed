@@ -11,7 +11,7 @@
 | Jacky Chen | jchen07@bu.edu |
 
 ## Table of Contents
-1. [Vision and Goals Of The Project](#vision-and-goals-of-the-project)
+1. [Vision and Goals Of The Project](#1-vision-and-goals-of-the-project)
    1. [Goal](#goal)
    2. [Features](#features)
 2. [Users / Personas of the Project](#users--personas-of-the-project)
