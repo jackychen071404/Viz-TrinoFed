@@ -25,12 +25,7 @@
 5. [Acceptance Criteria](#acceptance-criteria)
    1. [Minimum Acceptance Criteria](#minimum-acceptance-criteria)
    2. [Stretch Goals](#stretch-goals)
-6. [Release Planning](#release-planning)
-   1. [Sprint 1](#sprint-1)
-   2. [Sprint 2](#sprint-2)
-   3. [Sprint 3](#sprint-3)
-   4. [Sprint 4](#sprint-4)
-   5. [Sprint 5](#sprint-5)
+6. [Sprints](#release-planning)
 7. [Sprint Demos](#sprint-demos)
 
 ## 1.   Vision and Goals Of The Project:
