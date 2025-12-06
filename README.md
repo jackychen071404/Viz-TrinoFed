@@ -11,22 +11,13 @@
 | Jacky Chen | jchen07@bu.edu |
 
 ## Table of Contents
-1. [Vision and Goals Of The Project](#1-vision-and-goals-of-the-project)
-   1. [Goal](#goal)
-   2. [Features](#features)
-2. [Users / Personas of the Project](#users--personas-of-the-project)
-   1. [Primary Personas](#primary-personas)
-   2. [Additional Potential Users](#additional-potential-users)
-3. [Scope and Features Of The Project](#scope-and-features-of-the-project)
-4. [Solution Concept](#solution-concept)
-   1. [Current Architecture](#current-architecture)
-   2. [Global Architectural Structure Of the Project](#global-architectural-structure-of-the-project)
-   3. [Design Implications and Discussion](#design-implications-and-discussion)
-5. [Acceptance Criteria](#acceptance-criteria)
-   1. [Minimum Acceptance Criteria](#minimum-acceptance-criteria)
-   2. [Stretch Goals](#stretch-goals)
-6. [Sprints](#release-planning)
-7. [Sprint Demos](#sprint-demos)
+1. [Vision and Goals Of The Project](#1---vision-and-goals-of-the-project)
+2. [Users / Personas of the Project](#2-users--personas-of-the-project)
+3. [Scope and Features Of The Project](#3---scope-and-features-of-the-project)
+4. [Solution Concept](#4-solution-concept)
+5. [Acceptance Criteria](#5-acceptance-criteria)
+6. [Sprints](#6--release-planning)
+7. [Sprint Demos](#7-sprint-demos)
 
 ## 1.   Vision and Goals Of The Project
 
